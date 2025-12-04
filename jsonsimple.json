@@ -1,0 +1,58 @@
+{
+  "trailers_beluga": [
+    { "name": "tb01" }
+  ],
+
+  "trailers_factory": [
+    { "name": "tf01" }
+  ],
+
+  "hangars": [
+    "H1"
+  ],
+
+  "jig_types": {
+    "typeA": {
+      "name": "typeA",
+      "size_empty": 2,
+      "size_loaded": 4
+    }
+  },
+
+  "racks": [
+    {
+      "name": "R1",
+      "size": 3,
+      "jigs": ["jig0001"]
+    }
+  ],
+
+  "jigs": [
+    {
+      "name": "jig0001",
+      "type": "typeA",
+      "empty": false
+    },
+    {
+      "name": "jig0002",
+      "type": "typeA",
+      "empty": true
+    }
+  ],
+
+  "production_lines": [
+    {
+      "name": "PL1",
+      "schedule": ["jig0001"]
+    }
+  ],
+
+  "flights": [
+    {
+      "name": "B001",
+      "incoming": ["jig0002"],
+      "outgoing": ["jig0001"],
+      "scheduled_arrival": 10.0
+    }
+  ]
+}
