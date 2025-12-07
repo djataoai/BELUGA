@@ -231,9 +231,15 @@ class PutDownRack(Action):
         if not self.is_applicable(s):
             raise ValueError("Action not applicable")
         ns = s.copy()
+        
         ns.trailer_load[self.trailer] = None
         # edge insertion - define as append to the end for Beluga side
-        ns.rack_contents[self.rack].append(self.jig)
+        if self.side == "left":
+            ns.rack_contents[self.rack].insert(0, self.jig)
+        elif self.side == "right":
+            ns.rack_contents[self.rack].append(self.jig)
+        else:
+            raise ValueError(f"Unknown side: {self.side}")
         ns.trailer_location[self.trailer] = (self.rack, self.side)
         return ns
 
@@ -258,7 +264,11 @@ class PickUpRack(Action):
         if not self.is_applicable(s):
             raise ValueError("Action not applicable")
         ns = s.copy()
-        ns.rack_contents[self.rack].pop()  # remove edge
+        if self.side == "left":
+            ns.rack_contents[self.rack].pop(0)   # premier
+        else:  # "right"
+            ns.rack_contents[self.rack].pop()    # dernier
+
         ns.trailer_load[self.trailer] = self.jig
         ns.trailer_location[self.trailer] = ("beluga", None)  # assume moved to beluga
         return ns
@@ -349,6 +359,94 @@ def load_instance_from_json(path: str) -> State:
 
 
 # ---------- Example heuristic stub (greedy constructive) ----------
+def compute_urgency(state: State) -> Dict[str, int]:
+    """
+    Calcule une priorité pour chaque jig.
+    - Si une jig apparaît dans la schedule d’une ligne de production :
+        urgence = 1000 - index
+    - Sinon : urgence = 0
+    - Outgoing ignorés comme demandé.
+    """
+
+    urgency = {jig: 0 for jig in state.jigs.keys()}
+
+    # Parcours de toutes les lignes de production
+    for pl in state.production_lines.values():
+        schedule = pl.schedule
+
+        for idx, jig in enumerate(schedule):
+            # plus c'est tôt, plus c'est urgent
+            urgency[jig] = max(urgency[jig], 1000 - idx)
+
+    return urgency
+from typing import Optional
+def get_jig_size(state: State, jig: str) -> int:
+    j = state.jigs[jig]
+    jt = state.jig_types[j.type]
+    return jt.size_empty if j.empty else jt.size_loaded
+
+def find_trailer_at(state: State, location: str, side: Optional[str], require_empty: bool=True) -> Optional[str]:
+    """
+    Retourne un nom de trailer situé à (location, side) et éventuellement vide.
+    Si side is None, ignore side in matching.
+    """
+    for tr, load in state.trailer_load.items():
+        loc, tr_side = state.trailer_location.get(tr, (None, None))
+        if loc != location:
+            continue
+        if side is not None and tr_side != side:
+            continue
+        if require_empty and load is not None:
+            continue
+        return tr
+    return None
+
+def find_rack_and_pos(state: State, jig: str) -> Tuple[Optional[str], Optional[int]]:
+    for rname, contents in state.rack_contents.items():
+        if jig in contents:
+            return rname, contents.index(jig)
+    return None, None
+
+
+def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: str) -> Optional[str]:
+    """
+    Retourne le meilleur rack (nom) pour poser `jig` en respectant `side` ("left" ou "right").
+    Retourne None si aucun rack n'a de place.
+    """
+    best = None
+    best_score = None
+    jig_size = get_jig_size(state, jig)
+
+    for rname, contents in state.rack_contents.items():
+        # capacité utilisée
+        used = sum(get_jig_size(state, j) for j in contents)
+        cap = state.racks[rname].size
+        if used + jig_size > cap:
+            continue  # pas assez de place
+
+        # déterminer quel edge serait bloqué par placement
+        if side == "left":
+            # insertion en tête, l'élément bloqué sera l'ancien left edge (index 0)
+            blocked = contents[0] if contents else None
+        else:  # "right"
+            blocked = contents[-1] if contents else None
+
+        blocked_urg = urgency.get(blocked, -1) if blocked is not None else -1
+
+        # score simple : urgence bloquée (on veut MINIMISER)
+        score = blocked_urg
+
+        # petit tie-breaker : favoriser consolidation (moins d'espaces libres)
+        # on ajoute la proportion restante (plus petit = mieux)
+        remaining = cap - used - jig_size
+        score = (score, remaining)
+
+        if best_score is None or score < best_score:
+            best_score = score
+            best = rname
+
+    return best
+
 
 def greedy_next_action(state: State) -> Optional[Action]:
     """
