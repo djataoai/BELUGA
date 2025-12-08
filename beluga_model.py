@@ -390,15 +390,14 @@ def get_jig_size(state: State, jig: str) -> int:
     jt = state.jig_types[j.type]
     return jt.size_empty if j.empty else jt.size_loaded
 
-def find_trailer_at(state: State, location: str, side: Optional[str], require_empty: bool=True) -> Optional[str]:
+def find_trailer_at(state: State,  side: str, require_empty: bool=True) -> Optional[str]:
     """
     Retourne un nom de trailer situé à (location, side) et éventuellement vide.
     Si side is None, ignore side in matching.
     """
     for tr, load in state.trailer_load.items():
-        loc, tr_side = state.trailer_location.get(tr, (None, None))
-        if loc != location:
-            continue
+        _, tr_side = state.trailer_location.get(tr, (None, None))
+        
         if side is not None and tr_side != side:
             continue
         if require_empty and load is not None:
@@ -452,7 +451,7 @@ def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: s
 
     return best
 
-def move_one_edge_jig_to_rack(state: State, jig: str, dest_rack: str,  side: str) -> List[Action]:
+def move_one_edge_jig_to_rack(state: State, jig: str, dest_rack: str ) -> List[Action]:
     """
     Déplace une jig située à un edge d'un rack source vers un rack destination.
     On conserve le même edge (left ou right).
@@ -477,7 +476,7 @@ def move_one_edge_jig_to_rack(state: State, jig: str, dest_rack: str,  side: str
         return []   # pas au rack ou pas à un edge
 
     # Trouver un trailer vide au bon emplacement du rack source
-    trailer = find_trailer_at(state, src_rack, side, require_empty=True)
+    trailer = find_trailer_at(state,  side, require_empty=True)
     if trailer is None:
         return []   # il faudrait un move trailer first
 
@@ -534,7 +533,7 @@ def send_one_edge_jig(state: State, jig: str, target: str) -> List[Action]:
         return []
 
     # --- Trouver trailer vide situé au bon side ---
-    trailer = find_trailer_at(state, src_rack, side, require_empty=True)
+    trailer = find_trailer_at(state,  side, require_empty=True)
     if trailer is None:
         return []
 
@@ -549,6 +548,7 @@ def send_one_edge_jig(state: State, jig: str, target: str) -> List[Action]:
     if target == "beluga":
         b = s_after_pick.current_beluga
         load = LoadBeluga(jig=jig, beluga=b, trailer=trailer)
+        
         if load.is_applicable(s_after_pick):
             actions.append(load)
             return actions
@@ -583,7 +583,7 @@ def unload_jig_from_beluga(state: State, jig: str) -> List[Action]:
     if jig not in state.beluga_contents:
         return []
 
-    # Chercher un trailer vide à la Beluga
+    # Chercher un trailer vide coté Beluga
     trailer = None
     for tr_name, load in state.trailer_load.items():
         loc, side = state.trailer_location.get(tr_name, ("beluga", None))
@@ -597,6 +597,11 @@ def unload_jig_from_beluga(state: State, jig: str) -> List[Action]:
     unload = UnloadBeluga(jig=jig, beluga=state.current_beluga, trailer=trailer)
     if unload.is_applicable(state):
         actions.append(unload)
+    rname, side= choose_rack_for_jig(state, jig, compute_urgency(state), "left")
+    trailer = find_trailer_at(state, side, require_empty=True)
+    load = PutDownRack(jig=jig, trailer=trailer, rack=rname, side=side)
+    if load.is_applicable(state):
+        actions.append(load)
         return actions
 
     return []
@@ -619,16 +624,17 @@ def swap(state: State, rack_name: str, jig_to_free: str, side: str, urgency: Dic
     else:  # "right"
         idx_jig = rack_contents.index(jig_to_free)
         jigs_a_deplacer = rack_contents[idx_jig + 1:]  # tout ce qui est après
+        jigs_a_deplacer.reverse()  # pour déplacer dans l'ordre correct
 
     # Déplacer chaque jig devant jig_to_free
     for jig in jigs_a_deplacer:
         # 1) choisir un rack temporaire pour cette jig
-        target_rack, target_side = choose_rack_for_jig(state, jig, side, urgency)
+        target_rack, target_side = choose_rack_for_jig(state, jig, urgency, side)
         if target_rack is None:
             raise ValueError(f"Aucun rack disponible pour déplacer la jig {jig}")
 
         # 2) déplacer la jig vers le rack choisi
-        action = move_one_edge_jig_to_rack(state, jig, target_rack, side)
+        action = move_one_edge_jig_to_rack(state, jig, target_rack)
         if action is None:
             raise ValueError(f"Impossible de déplacer la jig {jig} depuis {rack_name} vers {target_rack}")
         
@@ -701,6 +707,47 @@ def evaluate_macro_action(state: State, macro_action) -> float:
     score = internal_cost / priority_boost
 
     return score
+def empty_jig(state: State, jig: str) -> bool:
+    return state.jig_empty.get(jig, True)
+def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[Action]:
+    """
+    Amène une jig d'un hangar vers un rack.""" 
+    actions = []
+
+    # Trouver hangar contenant la jig
+    hangar_name = None
+    for h, host in state.hangar_host.items():
+        if host == jig:
+            hangar_name = h
+            break
+    if hangar_name is None:
+        return []  # jig pas dans un hangar
+    empty_jig(state, jig) 
+    # Trouver trailer vide
+    trailer = find_trailer_at(state, side=None, require_empty=True)
+    if trailer is None:
+        return []  # pas de trailer vide
+
+    # Get from hangar
+    get = GetFromHangar(jig=jig, hangar=hangar_name, trailer=trailer)
+    if not get.is_applicable(state):
+        return []
+    actions.append(get)
+    s_after_get = get.apply(state)
+
+    # Choisir rack pour poser la jig
+    side = "right"  # choix arbitraire
+    rname , side = choose_rack_for_jig(s_after_get, jig, urgency, side)
+    if rname is None:
+        return []
+
+    # Put down rack
+    put = PutDownRack(jig=jig, trailer=trailer, rack=rname, side=side)
+    if not put.is_applicable(s_after_get):
+        return []
+    actions.append(put)
+
+    return actions
 
 def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tuple[Action, float]]:
 
@@ -884,23 +931,6 @@ def run_greedy_planning(initial_state: State, output_path: str = "result.json"):
     print(f"Plan glouton sauvegardé dans {output_path}")
     return history
 
-def greedy_next_action(state: State) -> Optional[Action]:
-    """
-    Very simple greedy heuristic:
-    - If a trailer at beluga has a jig that must be unloaded (its jig type matches current beluga outgoing),
-      unload it to beluga (or load beluga depending on semantics).
-    - If beluga has incoming jigs that must be sent to production, pick them up using an empty trailer at beluga.
-    This is only a placeholder: you will refine rules here.
-    """
-    # Try to pick up from beluga to trailer if any jig in beluga_contents and empty trailer at beluga
-    for trailer_name, load in state.trailer_load.items():
-        if load is None and state.trailer_location.get(trailer_name, ("beluga", None))[0] == "beluga":
-            if state.beluga_contents:
-                jig = state.beluga_contents[-1]  # pick edge
-                return UnloadBeluga(jig=jig, beluga=state.current_beluga, trailer=trailer_name)
-
-    # Otherwise no action found
-    return None
 
 
 # ---------- Minimal demonstration when run as script ----------
@@ -922,44 +952,16 @@ def greedy_next_action(state: State) -> Optional[Action]:
 #     else:
 #         print("No applicable greedy action found.")
 
-def print_state_summary(s: State, step: int, action: Optional[Action] = None):
-    print("-" * 50)
-    if action:
-        print(f"ÉTAT APRÈS ÉTAPE {step} | ACTION APPLIQUÉE: {action}")
-    else:
-        print(f"ÉTAT INITIAL (Étape {step})")
-    
-    print(f"Current beluga: {s.current_beluga}")
-    # Affiche l'arête (dernier) et le nombre total
-    beluga_summary = f"[..., {s.beluga_contents[-1]}] ({len(s.beluga_contents)} total)" if s.beluga_contents else "[] (0 total)"
-    print(f"Beluga contents (edge last): {s.beluga_contents}")
-    
-    # Affiche l'état de toutes les remorques
-    print("Trailers:", {t: s.trailer_load[t] for t in s.trailer_load})
-
 if __name__ == "__main__":
+    # path where you uploaded your JSON
     path = "f.json"
     s = load_instance_from_json(path)
-    MAX_STEPS = 5
-    step = 0
-
-    print("--- Démarrage de la simulation Gloutonne Séquentielle ---")
-    
-    # Affichage de l'état initial
-    print_state_summary(s, step)
-
-    while step < MAX_STEPS:
-        step += 1
-        action = greedy_next_action(s)
-        
-        if action is None:
-            print(f"\n[Étape {step}] Terminé : Aucune action gloutonne applicable trouvée (remorques pleines ou Beluga vide).")
-            break
-        
-        # Appliquer l'action
-        s = action.apply(s)
-        
-        # Afficher l'état après l'action
-        print_state_summary(s, step, action)
-    else:
-        print(f"\n--- Simulation terminée après {MAX_STEPS} étapes (limite de pas atteinte) ---")
+    print("Loaded state:")
+    print("Current beluga:", s.current_beluga)
+    print("Beluga contents (edge last):", s.beluga_contents)
+    print("Trailers:", {t: s.trailer_load[t] for t in s.trailer_load})
+    # run greedy planning until terminal
+    history = run_greedy_planning(s, output_path="result.json")
+    print("Planning history:")
+    for step_info in history:
+        print(step_info)
