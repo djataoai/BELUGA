@@ -258,8 +258,13 @@ class PickUpRack(Action):
     def is_applicable(self, s: State) -> bool:
         # check trailer empty and jig at rack edge (we assume edge is last element)
         rack_list = s.rack_contents.get(self.rack, [])
-        return (s.trailer_load.get(self.trailer) is None) and (len(rack_list) > 0 and rack_list[-1] == self.jig)
+        if self.side == "left":
+            at_edge = rack_list[0] == self.jig if rack_list else False
+        else:
+            at_edge = rack_list[-1] == self.jig if rack_list else False
+        return s.trailer_load.get(self.trailer) is None and at_edge
 
+        
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
             raise ValueError("Action not applicable")
@@ -413,7 +418,7 @@ def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: s
     Retourne le meilleur rack (nom) pour poser `jig` en respectant `side` ("left" ou "right").
     Retourne None si aucun rack n'a de place.
     """
-    best = None
+    best = (None, None)
     best_score = None
     jig_size = get_jig_size(state, jig)
 
@@ -443,10 +448,262 @@ def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: s
 
         if best_score is None or score < best_score:
             best_score = score
-            best = rname
+            best = (rname, side)
 
     return best
 
+def move_one_edge_jig_to_rack(state: State, jig: str, dest_rack: str,  side: str) -> List[Action]:
+    """
+    Déplace une jig située à un edge d'un rack source vers un rack destination.
+    On conserve le même edge (left ou right).
+    Retourne une liste d'actions élémentaires, ou [] si impossible.
+    """
+
+    # Trouver où est la jig et à quel edge
+    src_rack = None
+    side = None
+
+    for r, contents in state.rack_contents.items():
+        if not contents:
+            continue
+        if contents[0] == jig:
+            src_rack, side = r, "left"
+            break
+        if contents[-1] == jig:
+            src_rack, side = r, "right"
+            break
+
+    if src_rack is None:
+        return []   # pas au rack ou pas à un edge
+
+    # Trouver un trailer vide au bon emplacement du rack source
+    trailer = find_trailer_at(state, src_rack, side, require_empty=True)
+    if trailer is None:
+        return []   # il faudrait un move trailer first
+
+    actions = []
+
+    # Pick-up (edge)
+    pick = PickUpRack(jig=jig, trailer=trailer, rack=src_rack, side=side)
+    if not pick.is_applicable(state):
+        return []
+    actions.append(pick)
+
+    s_after_pick = pick.apply(state)
+
+    # Put-down à l’autre rack → même side utilisé
+    put = PutDownRack(jig=jig, trailer=trailer, rack=dest_rack, side=side)
+    if not put.is_applicable(s_after_pick):
+        return []
+    actions.append(put)
+
+    return actions
+def send_one_edge_jig(state: State, jig: str, target: str) -> List[Action]:
+    """
+    Déplace une jig située à un edge d'un rack vers:
+    - Beluga flight  (jig doit être empty)
+    - Une production line (jig doit être full)
+    """
+    actions = []
+
+    # --- Validations spécifiques ---
+    is_empty = state.jig_empty.get(jig, True)
+
+    if target == "beluga":
+        if not is_empty:
+            return []  # règle: jig doit être empty pour charger Beluga
+    else:
+        # sinon target = production
+        if is_empty:
+            return []  # règle: jig doit être full pour aller en production
+
+    # --- Trouver la jig à un edge ---
+    src_rack = None
+    side = None
+    for r, contents in state.rack_contents.items():
+        if not contents:
+            continue
+        if contents[0] == jig:
+            src_rack, side = r, "left"
+            break
+        if contents[-1] == jig:
+            src_rack, side = r, "right"
+            break
+
+    if src_rack is None:
+        return []
+
+    # --- Trouver trailer vide situé au bon side ---
+    trailer = find_trailer_at(state, src_rack, side, require_empty=True)
+    if trailer is None:
+        return []
+
+    # Pick
+    pick = PickUpRack(jig=jig, trailer=trailer, rack=src_rack, side=side)
+    if not pick.is_applicable(state):
+        return []
+    actions.append(pick)
+    s_after_pick = pick.apply(state)
+
+    # --- Cas 1: beluga ---
+    if target == "beluga":
+        b = s_after_pick.current_beluga
+        load = LoadBeluga(jig=jig, beluga=b, trailer=trailer)
+        if load.is_applicable(s_after_pick):
+            actions.append(load)
+            return actions
+        return []
+
+    # --- Cas 2: production ---
+    if target in s_after_pick.production_lines:
+        # Il faut un hangar vide pour la livraison
+        hangar = None
+        for h, host in s_after_pick.hangar_host.items():
+            if host is None:
+                hangar = h
+                break
+        if hangar is None:
+            return []
+
+        deliver = DeliverToHangar(jig=jig, hangar=hangar, trailer=trailer, production_line=target)
+        if deliver.is_applicable(s_after_pick):
+            actions.append(deliver)
+            return actions
+        return []
+
+    return []
+def unload_jig_from_beluga(state: State, jig: str) -> List[Action]:
+    """
+    Décharge une jig de la Beluga actuelle vers un trailer vide au même côté.
+    Retourne la liste des actions applicables (Pick + LoadBeluga).
+    """
+    actions = []
+
+    # Vérifier que la jig est dans la Beluga
+    if jig not in state.beluga_contents:
+        return []
+
+    # Chercher un trailer vide à la Beluga
+    trailer = None
+    for tr_name, load in state.trailer_load.items():
+        loc, side = state.trailer_location.get(tr_name, ("beluga", None))
+        if load is None and loc == "beluga":
+            trailer = tr_name
+            break
+    if trailer is None:
+        return []  # pas de trailer vide disponible
+
+    # Créer action de déchargement
+    unload = UnloadBeluga(jig=jig, beluga=state.current_beluga, trailer=trailer)
+    if unload.is_applicable(state):
+        actions.append(unload)
+        return actions
+
+    return []
+
+
+def swap(state: State, rack_name: str, jig_to_free: str, side: str, urgency: Dict[str, int]) -> List[Action]:
+    """
+    Libère jig_to_free dans rack rack_name en déplaçant toutes les jigs devant elle
+    dans la direction side (left ou right).
+    
+    Retourne la liste des Actions générées.
+    """
+    actions: List[Action] = []
+    rack_contents = state.rack_contents[rack_name]
+    
+    # Déterminer les jigs devant jig_to_free selon le side
+    if side == "left":
+        idx_jig = rack_contents.index(jig_to_free)
+        jigs_a_deplacer = rack_contents[:idx_jig]  # tout ce qui est avant
+    else:  # "right"
+        idx_jig = rack_contents.index(jig_to_free)
+        jigs_a_deplacer = rack_contents[idx_jig + 1:]  # tout ce qui est après
+
+    # Déplacer chaque jig devant jig_to_free
+    for jig in jigs_a_deplacer:
+        # 1) choisir un rack temporaire pour cette jig
+        target_rack, target_side = choose_rack_for_jig(state, jig, side, urgency)
+        if target_rack is None:
+            raise ValueError(f"Aucun rack disponible pour déplacer la jig {jig}")
+
+        # 2) déplacer la jig vers le rack choisi
+        action = move_one_edge_jig_to_rack(state, jig, target_rack, side)
+        if action is None:
+            raise ValueError(f"Impossible de déplacer la jig {jig} depuis {rack_name} vers {target_rack}")
+        
+        # 3) appliquer l'action sur le state
+        for act in action:
+            state = act.apply(state)
+            actions.append(act)
+    # Maintenant jig_to_free est à l'edge, on peut la manipuler
+    return actions
+       
+
+def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tuple[Action, float]]:
+    actions_with_score = []
+
+    beluga_empty = len(state.beluga_contents) == 0
+
+    # --- 1) Décharger Beluga vers racks (side gauche) ---
+    for jig in state.beluga_contents:
+        unload_actions = unload_jig_from_beluga(state, jig)
+        for act in unload_actions:
+            score = -urgency.get(jig, 0)
+            actions_with_score.append((act, score))
+
+    # --- 2) Envoyer jigs à la production (depuis racks, edge droit) ---
+    for pl_name, pl in state.production_lines.items():
+        schedule = pl.schedule
+        delivered = state.production_line_deliveries.get(pl_name, [])
+        next_idx = len(delivered)
+        if next_idx >= len(schedule):
+            continue
+        next_jig = schedule[next_idx]
+
+        # Chercher la jig sur les racks
+        rack_name, idx = find_rack_and_pos(state, next_jig)
+        if rack_name is None:
+            continue
+
+        # Si jig déjà à l'edge droit → envoyer à production
+        if idx == len(state.rack_contents[rack_name]) - 1:
+            send_actions = send_one_edge_jig(state, next_jig, pl_name)
+            for act in send_actions:
+                score = -urgency.get(next_jig, 0) - 0.1
+                actions_with_score.append((act, score))
+        else:
+            # Jig prioritaire mais bloquée → swap pour la mettre à l'edge droit
+            swap_actions = swap(state, rack_name, next_jig, "right", urgency)
+            for act in swap_actions:
+                # score légèrement moins urgent que livraison directe
+                score = -urgency.get(next_jig, 0) + 0.01
+                actions_with_score.append((act, score))
+
+    # --- 3) Charger Beluga avec jigs vides (side gauche) ---
+    if beluga_empty:
+        for rack_name, contents in state.rack_contents.items():
+            if not contents:
+                continue
+            jig = contents[0]  # edge gauche
+            if not state.jig_empty.get(jig, True):
+                continue
+            send_actions = send_one_edge_jig(state, jig, "beluga")
+            for act in send_actions:
+                score = -urgency.get(jig, 0)
+                actions_with_score.append((act, score))
+
+    return actions_with_score
+
+
+def greedy_next_action(state: State) -> Optional[Action]:
+    urgency = compute_urgency(state)
+    actions_with_score = generate_possible_actions(state, urgency)
+    if not actions_with_score:
+        return None
+    # Choisir l'action avec le score minimal
+    actions_with_score.sort(key=lambda x: x[1])
+    return actions_with_score[0][0]
 
 def greedy_next_action(state: State) -> Optional[Action]:
     """
