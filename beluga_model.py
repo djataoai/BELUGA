@@ -638,62 +638,170 @@ def swap(state: State, rack_name: str, jig_to_free: str, side: str, urgency: Dic
             actions.append(act)
     # Maintenant jig_to_free est à l'edge, on peut la manipuler
     return actions
-       
+@dataclass
+class MacroAction(Action):
+    actions: List[Action]          # liste des actions internes
+    internal_action_count: int     # nombre d'actions atomiques
+    swap_penalty: float = 0.0      # optionnel
+    name: str = ""
+
+    def __post_init__(self):
+        if not self.name:
+            self.name = f"macro({','.join(a.name for a in self.actions)})"
+
+    def is_applicable(self, s: State) -> bool:
+        # une macro action est applicable si TOUTES les actions internes le sont
+        return all(a.is_applicable(s) for a in self.actions)
+
+    def apply(self, s: State) -> State:
+        ns = s
+        for a in self.actions:
+            ns = a.apply(ns)
+        return ns
+def wrap_macro(actions: List[Action], swap_penalty: float = 0.0, name: str = "") -> MacroAction:
+    return MacroAction(
+        actions=actions,
+        internal_action_count=len(actions),
+        swap_penalty=swap_penalty,
+        name=name
+    )
+
+
+def evaluate_macro_action(state: State, macro_action) -> float:
+    """
+    Évalue une macroaction entière (un choix glouton possible).
+    Le score doit être MINIMAL pour être choisi.
+
+    Paramètres
+    ----------
+    state : State
+        État courant du système.
+    macro_action : objet MacroAction
+        Contient :
+          - macro_action.actions       (liste d'actions atomiques)
+          - macro_action.base_priority
+          - macro_action.swap_penalty
+          - macro_action.name
+    """
+
+    # ----- 1) Coût interne -----
+    internal_ops = getattr(macro_action, "internal_action_count", 0)
+    swap_penalty = getattr(macro_action, "swap_penalty", 0.0)
+
+    internal_cost = internal_ops + swap_penalty
+
+    # ----- 2) Priorité métier -----
+    # Plus base_priority est négatif → plus l'action est prioritaire
+    base_priority = getattr(macro_action, "base_priority", 0.0)
+
+    # facteur multiplicatif, jamais < 1
+    priority_boost = 1.0 + max(0.0, -base_priority)
+
+    # ----- 3) Score final glouton -----
+    score = internal_cost / priority_boost
+
+    return score
 
 def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tuple[Action, float]]:
-    actions_with_score = []
 
+    actions_with_score = []
     beluga_empty = len(state.beluga_contents) == 0
 
-    # --- 1) Décharger Beluga vers racks (side gauche) ---
+    # ============================================================
+    # 1) Décharger Beluga
+    # ============================================================
     for jig in state.beluga_contents:
-        unload_actions = unload_jig_from_beluga(state, jig)
-        for act in unload_actions:
-            score = -urgency.get(jig, 0)
-            actions_with_score.append((act, score))
 
-    # --- 2) Envoyer jigs à la production (depuis racks, edge droit) ---
-    for pl_name, pl in state.production_lines.items():
-        schedule = pl.schedule
-        delivered = state.production_line_deliveries.get(pl_name, [])
-        next_idx = len(delivered)
-        if next_idx >= len(schedule):
+        atomic_actions = unload_jig_from_beluga(state, jig)
+        if not atomic_actions:
             continue
-        next_jig = schedule[next_idx]
 
-        # Chercher la jig sur les racks
-        rack_name, idx = find_rack_and_pos(state, next_jig)
+        macro = wrap_macro(atomic_actions, name=f"unload_beluga({jig})")
+        score = evaluate_macro_action(state, macro, base_priority=+5)
+
+        actions_with_score.append((macro, score))
+
+    # ============================================================
+    # 2) Envoyer des jigs vers la production 
+    # ============================================================
+    for pl_name, pl in state.production_lines.items():
+
+        delivered_count = len(state.production_line_deliveries.get(pl_name, []))
+        if delivered_count >= len(pl.schedule):
+            continue
+
+        next_jig = pl.schedule[delivered_count]
+
+        rack_name, pos = find_rack_and_pos(state, next_jig)
         if rack_name is None:
             continue
 
-        # Si jig déjà à l'edge droit → envoyer à production
-        if idx == len(state.rack_contents[rack_name]) - 1:
-            send_actions = send_one_edge_jig(state, next_jig, pl_name)
-            for act in send_actions:
-                score = -urgency.get(next_jig, 0) - 0.1
-                actions_with_score.append((act, score))
-        else:
-            # Jig prioritaire mais bloquée → swap pour la mettre à l'edge droit
-            swap_actions = swap(state, rack_name, next_jig, "right", urgency)
-            for act in swap_actions:
-                # score légèrement moins urgent que livraison directe
-                score = -urgency.get(next_jig, 0) + 0.01
-                actions_with_score.append((act, score))
+        is_edge = (pos == len(state.rack_contents[rack_name]) - 1)
 
-    # --- 3) Charger Beluga avec jigs vides (side gauche) ---
+        # --- 2A : direct → production
+        if is_edge:
+
+            atomic_actions = send_one_edge_jig(state, next_jig, pl_name)
+            if not atomic_actions:
+                continue
+
+            macro = wrap_macro(
+                atomic_actions,
+                name=f"send_to_prod({next_jig},{pl_name})"
+            )
+
+            priority = -10 * urgency.get(next_jig, 0)
+            score = evaluate_macro_action(state, macro, base_priority=priority)
+
+            actions_with_score.append((macro, score))
+
+        # --- 2B : swap nécessaire
+        else:
+            depth = len(state.rack_contents[rack_name]) - pos - 1
+
+            atomic_actions = swap(state, rack_name, next_jig, "right")
+            if not atomic_actions:
+                continue
+
+            macro = wrap_macro(
+                atomic_actions,
+                swap_penalty=2 * depth,
+                name=f"swap_to_edge({next_jig})"
+            )
+
+            priority = -5 * urgency.get(next_jig, 0)
+            score = evaluate_macro_action(state, macro, base_priority=priority)
+
+            actions_with_score.append((macro, score))
+
+    # ============================================================
+    # 3) Charger Beluga (si vide)
+    # ============================================================
     if beluga_empty:
         for rack_name, contents in state.rack_contents.items():
+
             if not contents:
                 continue
-            jig = contents[0]  # edge gauche
+
+            jig = contents[0]
+
             if not state.jig_empty.get(jig, True):
                 continue
-            send_actions = send_one_edge_jig(state, jig, "beluga")
-            for act in send_actions:
-                score = -urgency.get(jig, 0)
-                actions_with_score.append((act, score))
+
+            atomic_actions = send_one_edge_jig(state, jig, "beluga")
+            if not atomic_actions:
+                continue
+
+            macro = wrap_macro(
+                atomic_actions,
+                name=f"load_beluga({jig})"
+            )
+
+            score = evaluate_macro_action(state, macro, base_priority=+5)
+            actions_with_score.append((macro, score))
 
     return actions_with_score
+
 
 
 def greedy_next_action(state: State) -> Optional[Action]:
