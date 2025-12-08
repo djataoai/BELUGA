@@ -806,15 +806,28 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
         else:
             depth = len(state.rack_contents[rack_name]) - pos - 1
 
+            # actions pour swap
             atomic_actions = swap(state, rack_name, next_jig, "right")
             if not atomic_actions:
                 continue
 
+            # appliquer progressivement le swap pour obtenir l'état mis à jour
+            tmp_state = state
+            for act in atomic_actions:
+                tmp_state = act.apply(tmp_state)
+
+            # maintenant seulement on peut envoyer la jig à la plateforme
+            atomic_actions2 = send_one_edge_jig(tmp_state, next_jig, pl_name)
+            if not atomic_actions2:
+                continue
+
+            # wrap_macro combiné des deux séquences
             macro = wrap_macro(
-                atomic_actions,
+                atomic_actions + atomic_actions2,
                 swap_penalty=2 * depth,
                 name=f"swap_to_edge({next_jig})"
             )
+
 
             priority = -5 * urgency.get(next_jig, 0)
             score = evaluate_macro_action(state, macro, base_priority=priority)
