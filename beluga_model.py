@@ -445,6 +445,27 @@ def find_next_beluga(state: State) -> Optional[str]:
         except ValueError:
             return None
 
+def find_best_jig_of_type(state: State, type: str, empty=True) -> Optional[str]:
+    """
+    Retourne le jig du type donné le plus proche de left, ou None si aucun.
+    """
+    best_jig = None
+    best_distance = float('inf')
+    
+    for rname, contents in state.rack_contents.items():
+        for idx, jig_name in enumerate(contents):
+            jig = state.jigs[jig_name]
+            if empty and not state.jig_empty.get(jig_name, True):
+                continue
+            if jig.type == type:
+                # Distance from left edge (index 0)
+                distance = idx
+                if distance < best_distance:
+                    best_distance = distance
+                    best_jig = jig_name
+    
+    return best_jig
+
 
 def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: str) -> Optional[str]:
     """
@@ -992,7 +1013,12 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
     
     if len(state.last_belugas) > 0:
         for beluga in state.last_belugas:
-            for jig in state.flights[beluga].outgoing:
+
+            for jig_type in state.flights[beluga].outgoing:
+                jig = find_best_jig_of_type(state, jig_type, empty=True)
+                if jig is None:
+                    print(f"    -> Aucun jig vide de type {jig_type} disponible pour le Beluga {beluga}.")
+                    continue
                 print("  Beluga vide. Tente de ramener jig outgoing", jig, "de la Beluga", beluga)
                 atomic_actions = send_empty_jig_to_beluga(state, jig, state.current_beluga)
                 if not atomic_actions:
