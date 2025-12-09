@@ -779,6 +779,7 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
 
         atomic_actions = unload_jig_from_beluga(state, jig)
         if not atomic_actions:
+            print(f"Impossible de décharger la jig {jig} de la Beluga.")
             continue
 
         macro = wrap_macro(atomic_actions, name=f"unload_beluga({jig})")
@@ -793,12 +794,14 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
 
         delivered_count = len(state.production_line_deliveries.get(pl_name, []))
         if delivered_count >= len(pl.schedule):
+            print(f"Ligne {pl_name} déjà complète.")
             continue
 
         next_jig = pl.schedule[delivered_count]
 
         rack_name, pos = find_rack_and_pos(state, next_jig)
         if rack_name is None:
+            print(f"La jig {next_jig} n'est dans aucun rack.")
             continue
 
         is_edge = (pos == len(state.rack_contents[rack_name]) - 1)
@@ -808,6 +811,7 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
 
             atomic_actions = send_one_edge_jig(state, next_jig, pl_name)
             if not atomic_actions:
+                print(f"Impossible d'envoyer directement la jig {next_jig} vers {pl_name}.")
                 continue
 
             macro = wrap_macro(
