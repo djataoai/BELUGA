@@ -331,11 +331,28 @@ def load_instance_from_json(path: str) -> State:
         s.rack_contents[rack.name] = list(rack.jigs)
 
     # trailers beluga + factory
-    for t in data.get("trailers_beluga", []) + data.get("trailers_factory", []):
-        trailer = Trailer(name=t["name"])
+    # trailers beluga
+    for t in data.get("trailers_beluga", []):
+        trailer = Trailer(
+            name=t["name"],
+            side="left",
+            location="beluga"
+        )
         s.trailers[trailer.name] = trailer
         s.trailer_load[trailer.name] = trailer.load
         s.trailer_location[trailer.name] = (trailer.location, trailer.side)
+
+    # trailers factory
+    for t in data.get("trailers_factory", []):
+        trailer = Trailer(
+            name=t["name"],
+            side="right",
+            location="factory"
+        )
+        s.trailers[trailer.name] = trailer
+        s.trailer_load[trailer.name] = trailer.load
+        s.trailer_location[trailer.name] = (trailer.location, trailer.side)
+
 
     # hangars
     for h in data.get("hangars", []):
