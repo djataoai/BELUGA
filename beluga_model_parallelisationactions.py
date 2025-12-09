@@ -5,7 +5,7 @@ import json
 import copy
 
 # #Syntaxe 
-# git checkout -b ma-nouvelle-regle-gloutonne
+# git  -b ma-nouvelle-regle-gloutonne
 # git add .
 # git commit -m "Implémentation de PutDownRack et mise à jour de l'heuristique"
 # git push origin ma-nouvelle-regle-gloutonne
@@ -365,12 +365,50 @@ def load_instance_from_json(path: str) -> State:
         s.racks[rack.name] = rack
         s.rack_contents[rack.name] = list(rack.jigs)
 
-    # trailers beluga + factory
-    for t in data.get("trailers_beluga", []) + data.get("trailers_factory", []):
-        trailer = Trailer(name=t["name"])
-        s.trailers[trailer.name] = trailer
-        s.trailer_load[trailer.name] = trailer.load
-        s.trailer_location[trailer.name] = (trailer.location, trailer.side)
+    # # trailers beluga + factory
+    # for t in data.get("trailers_beluga", []) + data.get("trailers_factory", []):
+    #     trailer = Trailer(name=t["name"])
+    #     s.trailers[trailer.name] = trailer
+    #     s.trailer_load[trailer.name] = trailer.load
+    #     s.trailer_location[trailer.name] = (trailer.location, trailer.side)
+    
+# 1. Remorques BELUGA (Côté gauche : "left")
+    # Location: "beluga", Side: "left"
+    for t_data in data.get("trailers_beluga", []):
+        name = t_data["name"]
+        load = t_data.get("load")
+        
+        # Convention : Si Trailer Beluga, son côté est "left".
+        TRAILER_SIDE = "left"
+        # ---
+        
+        # On définit explicitement location="beluga"
+        trailer = Trailer(name=name, load=load, location="beluga", side=TRAILER_SIDE)
+        
+        s.trailers[name] = trailer
+        s.trailer_load[name] = trailer.load
+        s.trailer_location[name] = (trailer.location, trailer.side)
+
+    # 2. Remorques FACTORY (Côté droit : "right")
+    # Location: rack/hangar/factory_area, Side: "right"
+    for t_data in data.get("trailers_factory", []):
+        name = t_data["name"]
+        load = t_data.get("load")
+        
+        # Convention : Si Trailer Factory, son côté est "right".
+        TRAILER_SIDE = "right"
+        # ---
+        
+        # Récupérer la location si spécifiée dans le JSON, sinon utiliser un défaut
+        location = t_data.get("location", "factory_area") 
+        
+        # On ignore le side potentiellement présent dans t_data pour appliquer la règle
+        trailer = Trailer(name=name, load=load, location=location, side=TRAILER_SIDE)
+        
+        s.trailers[name] = trailer
+        s.trailer_load[name] = trailer.load
+        
+        s.trailer_location[name] = (trailer.location, trailer.side)
 
     # hangars
     for h in data.get("hangars", []):
@@ -599,7 +637,7 @@ def print_state_summary(s: State, step: int, action: Optional[Action] = None):
         print(f"    - Livraisons (Jigs reçus) : {deliveries}")
 
 if __name__ == "__main__":
-    path = "jsonsimple.json" 
+    path = "f.json" 
     try:
         s = load_instance_from_json(path)
     except FileNotFoundError:
