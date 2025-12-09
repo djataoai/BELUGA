@@ -440,10 +440,7 @@ def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: s
         # score simple : urgence bloquée (on veut MINIMISER)
         score = blocked_urg
 
-        # petit tie-breaker : favoriser consolidation (moins d'espaces libres)
-        # on ajoute la proportion restante (plus petit = mieux)
-        remaining = cap - used - jig_size
-        score = (score, remaining)
+        
 
         if best_score is None or score < best_score:
             best_score = score
@@ -586,8 +583,8 @@ def unload_jig_from_beluga(state: State, jig: str) -> List[Action]:
     # Chercher un trailer vide coté Beluga
     trailer = None
     for tr_name, load in state.trailer_load.items():
-        loc, side = state.trailer_location.get(tr_name, ("beluga", None))
-        if load is None and loc == "beluga":
+        loc, side = state.trailer_location.get(tr_name, ("beluga", "left"))
+        if load is None and side == "left":
             trailer = tr_name
             break
     if trailer is None:
@@ -656,8 +653,12 @@ class MacroAction(Action):
             self.name = f"macro({','.join(a.name for a in self.actions)})"
 
     def is_applicable(self, s: State) -> bool:
-        # une macro action est applicable si TOUTES les actions internes le sont
-        return all(a.is_applicable(s) for a in self.actions)
+        ns = s
+        for a in self.actions:
+            if not a.is_applicable(ns):
+                return False
+            ns = a.apply(ns)
+        return True
 
     def apply(self, s: State) -> State:
         ns = s
@@ -764,7 +765,7 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
             continue
 
         macro = wrap_macro(atomic_actions, name=f"unload_beluga({jig})")
-        score = evaluate_macro_action(state, macro, base_priority=+5)
+        score = evaluate_macro_action(state, macro)
 
         actions_with_score.append((macro, score))
 
@@ -798,7 +799,7 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
             )
 
             priority = -10 * urgency.get(next_jig, 0)
-            score = evaluate_macro_action(state, macro, base_priority=priority)
+            score = evaluate_macro_action(state, macro)
 
             actions_with_score.append((macro, score))
 
@@ -830,7 +831,7 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
 
 
             priority = -5 * urgency.get(next_jig, 0)
-            score = evaluate_macro_action(state, macro, base_priority=priority)
+            score = evaluate_macro_action(state, macro)
 
             actions_with_score.append((macro, score))
 
