@@ -160,6 +160,34 @@ class UnloadBeluga(Action):
         ns.beluga_contents.remove(self.jig)
         ns.trailer_load[self.trailer] = self.jig
         return ns
+@dataclass
+class RegisterOutgoingJig(Action):
+    jig: str
+    trailer: str
+
+    def __post_init__(self):
+        self.name = f"register_outgoing_jig({self.jig},{self.trailer})"
+
+    def is_applicable(self, s: State) -> bool:
+        return s.trailer_load.get(self.trailer) == self.jig
+
+    def apply(self, s: State) -> State:
+        if not self.is_applicable(s):
+            raise ValueError("Action not applicable")
+
+        ns = s.copy()
+
+        # 1) libérer le trailer
+        ns.trailer_load[self.trailer] = None
+
+        # 2) consommer le vol sortant
+        jig_type = ns.jigs[self.jig].type
+        if jig_type not in ns.remaining_outgoing:
+            raise ValueError("No outgoing flight available for this jig type")
+
+        ns.remaining_outgoing.remove(jig_type)
+
+        return ns
 
 
 # 3) get_from_hanger(j, h, t) : load jig j currently located in hangar h onto trailer t
@@ -739,46 +767,55 @@ def send_empty_jig_to_beluga(state: State, jig: str) -> List[Action]:
     Retourne la liste des actions élémentaires, ou [] si impossible.
     """
     actions = []
+    sim_state = state.copy()   # ← COPIE LOCALE
 
     # 1) Trouver le rack où se trouve la jig
-    rname, pos = find_rack_and_pos(state, jig)
+    rname, pos = find_rack_and_pos(sim_state, jig)
     if rname is None:
+        print("La jig n'est pas dans un rack")
         return []
 
     side = "beluga_side"
 
     # 2) Trouver un trailer vide au bon side
-    trailer_name = find_trailer_at(state, side=side, require_empty=True)
+    trailer_name = find_trailer_at(sim_state, side=side, require_empty=True)
     if trailer_name is None:
+        print("Pas de trailer vide disponible au bon side")
         return []
 
     # 3) Vérifier si la jig est en bord de rack
-    at_edge = (state.rack_contents[rname][0] == jig)
+    at_edge = (sim_state.rack_contents[rname][0] == jig)
 
     # Si non : swap pour libérer la jig
     if not at_edge:
-        swap_actions = swap(state, rname, jig, side, compute_urgency(state))
+        swap_actions = swap(sim_state, rname, jig, side, compute_urgency(sim_state))
         if not swap_actions:
+            print("Impossible de libérer la jig via swap")
             return []
         for act in swap_actions:
-            state = act.apply(state)
+            sim_state = act.apply(sim_state)
             actions.append(act)
 
     # 4) PickUpRack
     pick = PickUpRack(jig=jig, trailer=trailer_name, rack=rname, side=side)
-    if not pick.is_applicable(state):
+    if not pick.is_applicable(sim_state):
+        print("Action PickUpRack NON applicable.")
         return []
-    state = pick.apply(state)
+
+    sim_state = pick.apply(sim_state)
     actions.append(pick)
 
-    # 5) LoadBeluga
-    if state.jigs[jig].type in state.remaining_outgoing:
-        state.remaining_outgoing.remove(state.jigs[jig].type)
-    else:
-        raise ValueError("No outgoing flight available for this jig type")
+    # 5) LoadBeluga (consommation logique)
+    finalize = RegisterOutgoingJig(jig=jig, trailer=trailer_name)
+    if not finalize.is_applicable(sim_state):
+        print("Action RegisterOutgoingJig NON applicable.")
+        return []
 
-    
+    sim_state = finalize.apply(sim_state)
+    actions.append(finalize)
+
     return actions
+
 
 
 @dataclass
@@ -897,20 +934,21 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
 
     actions_with_score = []
     beluga_empty = len(state.beluga_contents) == 0
+    jig_types_stored= len(state.remaining_outgoing) == 0
     print(f"\n--- Génération d'actions ---")
     print(f"État Beluga vide: {beluga_empty}. Contenu actuel: {state.beluga_contents}")
 
     # ============================================================
     # 1) Décharger Beluga
     # ============================================================
-    if beluga_empty:
+    if beluga_empty and jig_types_stored:
         next_beluga = find_next_beluga(state)
         if next_beluga is not None:
             print(f"  Beluga est vide. Tente de switcher vers la prochaine Beluga: {next_beluga}")
             switch_action = SwitchToNextBeluga(next_beluga=next_beluga)
             if switch_action.is_applicable(state):
                 macro = wrap_macro([switch_action], name=f"switch_to_next_beluga({next_beluga})")
-                score = 0
+                score = -10.0  # bonus fort pour switch
                 actions_with_score.append((macro, score))
                 print(f"    -> Succès: Macro {macro.name} générée. Score: {score:.2f}")
             else:
@@ -1023,7 +1061,8 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
     
 
 
-    for jig_type in state.remaining_outgoing:
+    for jig_type in set(state.remaining_outgoing):
+        print(f"  Tente de ramener un jig vide de type {jig_type} pour le Beluga {state.current_beluga}...")
         jig = find_best_jig_of_type(state, jig_type, empty=True)
         if jig is None:
             print(f"    -> Aucun jig vide de type {jig_type} disponible pour le Beluga {state.current_beluga}.")
