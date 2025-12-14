@@ -179,6 +179,7 @@ class RegisterOutgoingJig(Action):
 
         # 1) libérer le trailer
         ns.trailer_load[self.trailer] = None
+        ns.trailer_location[self.trailer] = ("beluga", "beluga_side")
 
         # 2) consommer le vol sortant
         jig_type = ns.jigs[self.jig].type
@@ -210,7 +211,7 @@ class GetFromHangar(Action):
         ns.hangar_host[self.hangar] = None
         ns.trailer_load[self.trailer] = self.jig
         # set trailer location to hangar (maybe now moving)
-        ns.trailer_location[self.trailer] = (self.hangar, None)
+        
         return ns
 
 
@@ -305,7 +306,7 @@ class PickUpRack(Action):
             ns.rack_contents[self.rack].pop()    # dernier
 
         ns.trailer_load[self.trailer] = self.jig
-        ns.trailer_location[self.trailer] = ("beluga", None)  # assume moved to beluga
+        
         return ns
 
 
@@ -449,8 +450,7 @@ def find_trailer_at(state: State,  side: str, require_empty: bool=True) -> Optio
         
         if side is not None and tr_side != side:
             continue
-        if require_empty and load is not None:
-            continue
+        
         return tr
     return None
 
@@ -781,6 +781,8 @@ def send_empty_jig_to_beluga(state: State, jig: str) -> List[Action]:
     trailer_name = find_trailer_at(sim_state, side=side, require_empty=True)
     if trailer_name is None:
         print("Pas de trailer vide disponible au bon side")
+        for tr, side_loc in sim_state.trailer_location.items():
+            print(f"Trailer {tr} à l'emplacement {side_loc}")
         return []
 
     # 3) Vérifier si la jig est en bord de rack
