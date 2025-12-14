@@ -29,7 +29,7 @@ class Jig:
 class Rack:
     name: str
     size: int
-    jigs: List[str] = field(default_factory=list)  # ordered list, edge at index 0 or -1 (we'll treat rightmost as edge)
+    jigs: List[str] = field(default_factory=list)  # ordered list, edge at index 0 or -1 (we'll treat factory_sidemost as edge)
 
 @dataclass
 class Trailer:
@@ -38,7 +38,7 @@ class Trailer:
     load: Optional[str] = None
     # location: "beluga" | rack name | hangar name
     location: str = "beluga"
-    # parked side : "left" | "right" | None ("null")
+    # parked side : "beluga_side" | "factory_side" | None ("null")
     side: Optional[str] = None
 
 @dataclass
@@ -150,7 +150,7 @@ class UnloadBeluga(Action):
 
     def is_applicable(self, s: State) -> bool:
         # jig must be in beluga_contents and current beluga matches and trailer empty & at beluga
-        return (s.current_beluga == self.beluga) and (self.jig in s.beluga_contents) and (s.trailer_load.get(self.trailer) is None) and (s.trailer_location.get(self.trailer, ("beluga", "left"))[1] == "left")
+        return (s.current_beluga == self.beluga) and (self.jig in s.beluga_contents) and (s.trailer_load.get(self.trailer) is None) and (s.trailer_location.get(self.trailer, ("beluga", "beluga_side"))[1] == "beluga_side")
 
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
@@ -235,9 +235,9 @@ class PutDownRack(Action):
         
         ns.trailer_load[self.trailer] = None
         # edge insertion - define as append to the end for Beluga side
-        if self.side == "left":
+        if self.side == "beluga_side":
             ns.rack_contents[self.rack].insert(0, self.jig)
-        elif self.side == "right":
+        elif self.side == "factory_side":
             ns.rack_contents[self.rack].append(self.jig)
         else:
             raise ValueError(f"Unknown side: {self.side}")
@@ -259,7 +259,7 @@ class PickUpRack(Action):
     def is_applicable(self, s: State) -> bool:
         # check trailer empty and jig at rack edge (we assume edge is last element)
         rack_list = s.rack_contents.get(self.rack, [])
-        if self.side == "left":
+        if self.side == "beluga_side":
             at_edge = rack_list[0] == self.jig if rack_list else False
         else:
             at_edge = rack_list[-1] == self.jig if rack_list else False
@@ -270,9 +270,9 @@ class PickUpRack(Action):
         if not self.is_applicable(s):
             raise ValueError("Action not applicable")
         ns = s.copy()
-        if self.side == "left":
+        if self.side == "beluga_side":
             ns.rack_contents[self.rack].pop(0)   # premier
-        else:  # "right"
+        else:  # "factory_side"
             ns.rack_contents[self.rack].pop()    # dernier
 
         ns.trailer_load[self.trailer] = self.jig
@@ -336,7 +336,7 @@ def load_instance_from_json(path: str) -> State:
     for t in data.get("trailers_beluga", []):
         trailer = Trailer(
             name=t["name"],
-            side="left",
+            side="beluga_side",
             location="beluga"
         )
         s.trailers[trailer.name] = trailer
@@ -347,7 +347,7 @@ def load_instance_from_json(path: str) -> State:
     for t in data.get("trailers_factory", []):
         trailer = Trailer(
             name=t["name"],
-            side="right",
+            side="factory_side",
             location="factory"
         )
         s.trailers[trailer.name] = trailer
@@ -447,7 +447,7 @@ def find_next_beluga(state: State) -> Optional[str]:
 
 def find_best_jig_of_type(state: State, type: str, empty=True) -> Optional[str]:
     """
-    Retourne le jig du type donné le plus proche de left, ou None si aucun.
+    Retourne le jig du type donné le plus proche de beluga_side, ou None si aucun.
     """
     best_jig = None
     best_distance = float('inf')
@@ -458,7 +458,7 @@ def find_best_jig_of_type(state: State, type: str, empty=True) -> Optional[str]:
             if empty and not state.jig_empty.get(jig_name, True):
                 continue
             if jig.type == type:
-                # Distance from left edge (index 0)
+                # Distance from beluga_side edge (index 0)
                 distance = idx
                 if distance < best_distance:
                     best_distance = distance
@@ -469,7 +469,7 @@ def find_best_jig_of_type(state: State, type: str, empty=True) -> Optional[str]:
 
 def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: str) -> Optional[str]:
     """
-    Retourne le meilleur rack (nom) pour poser `jig` en respectant `side` ("left" ou "right").
+    Retourne le meilleur rack (nom) pour poser `jig` en respectant `side` ("beluga_side" ou "factory_side").
     Retourne None si aucun rack n'a de place.
     """
     best = (None, None)
@@ -487,10 +487,10 @@ def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: s
             continue  # pas assez de place
 
         # déterminer quel edge serait bloqué par placement
-        if side == "left":
-            # insertion en tête, l'élément bloqué sera l'ancien left edge (index 0)
+        if side == "beluga_side":
+            # insertion en tête, l'élément bloqué sera l'ancien beluga_side edge (index 0)
             blocked = contents[0] if contents else None
-        else:  # "right"
+        else:  # "factory_side"
             blocked = contents[-1] if contents else None
 
         blocked_urg = urgency.get(blocked, -1) if blocked is not None else -1
@@ -512,7 +512,7 @@ def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: s
 def move_one_edge_jig_to_rack(state: State, jig: str, dest_rack: str ) -> List[Action]:
     """
     Déplace une jig située à un edge d'un rack source vers un rack destination.
-    On conserve le même edge (left ou right).
+    On conserve le même edge (beluga_side ou factory_side).
     Retourne une liste d'actions élémentaires, ou [] si impossible.
     """
 
@@ -524,10 +524,10 @@ def move_one_edge_jig_to_rack(state: State, jig: str, dest_rack: str ) -> List[A
         if not contents:
             continue
         if contents[0] == jig:
-            src_rack, side = r, "left"
+            src_rack, side = r, "beluga_side"
             break
         if contents[-1] == jig:
-            src_rack, side = r, "right"
+            src_rack, side = r, "factory_side"
             break
 
     if src_rack is None:
@@ -581,10 +581,10 @@ def send_one_edge_jig(state: State, jig: str, target: str) -> List[Action]:
         if not contents:
             continue
         if contents[0] == jig:
-            src_rack, side = r, "left"
+            src_rack, side = r, "beluga_side"
             break
         if contents[-1] == jig:
-            src_rack, side = r, "right"
+            src_rack, side = r, "factory_side"
             break
 
     if src_rack is None:
@@ -657,10 +657,10 @@ def unload_jig_from_beluga(state: State, jig: str) -> List[Action]:
         is_at_beluga = (loc == "beluga")
         
         # Votre code initial vérifiait uniquement le side et s'arrêtait immédiatement
-        if side == "left":
+        if side == "beluga_side":
             
             trailer = tr_name
-            break # Arrêt immédiat dès le premier trailer avec side='left', même s'il est chargé ou ailleurs.
+            break # Arrêt immédiat dès le premier trailer avec side='beluga_side', même s'il est chargé ou ailleurs.
         
    
     
@@ -678,7 +678,7 @@ def unload_jig_from_beluga(state: State, jig: str) -> List[Action]:
         print("Action UnloadBeluga NON applicable. \n")
         return []
         
-    rname, side= choose_rack_for_jig(state, jig, compute_urgency(state), "left")
+    rname, side= choose_rack_for_jig(state, jig, compute_urgency(state), "beluga_side")
     trailer = find_trailer_at(state, side, require_empty=True)
 
     load = PutDownRack(jig=jig, trailer=trailer, rack=rname, side=side)
@@ -696,7 +696,7 @@ def unload_jig_from_beluga(state: State, jig: str) -> List[Action]:
 def swap(state: State, rack_name: str, jig_to_free: str, side: str, urgency: Dict[str, int]) -> List[Action]:
     """
     Libère jig_to_free dans rack rack_name en déplaçant toutes les jigs devant elle
-    dans la direction side (left ou right).
+    dans la direction side (beluga_side ou factory_side).
     
     Retourne la liste des Actions générées.
     """
@@ -704,10 +704,10 @@ def swap(state: State, rack_name: str, jig_to_free: str, side: str, urgency: Dic
     rack_contents = state.rack_contents[rack_name]
     
     # Déterminer les jigs devant jig_to_free selon le side
-    if side == "left":
+    if side == "beluga_side":
         idx_jig = rack_contents.index(jig_to_free)
         jigs_a_deplacer = rack_contents[:idx_jig]  # tout ce qui est avant
-    else:  # "right"
+    else:  # "factory_side"
         idx_jig = rack_contents.index(jig_to_free)
         jigs_a_deplacer = rack_contents[idx_jig + 1:]  # tout ce qui est après
         jigs_a_deplacer.reverse()  # pour déplacer dans l'ordre correct
@@ -742,7 +742,7 @@ def send_empty_jig_to_beluga(state: State, jig: str, beluga_name: str) -> List[A
     if rname is None:
         return []
 
-    side = "left"
+    side = "beluga_side"
 
     # 2) Trouver un trailer vide au bon side
     trailer_name = find_trailer_at(state, side=side, require_empty=True)
@@ -870,7 +870,7 @@ def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[A
     s_after_get = get.apply(state)
 
     # Choisir rack pour poser la jig
-    side = "right"  # choix arbitraire
+    side = "factory_side"  # choix arbitraire
     rname , side = choose_rack_for_jig(s_after_get, jig, urgency, side)
     if rname is None:
         return []
@@ -945,7 +945,7 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
         rack_size = len(state.rack_contents[rack_name])
         is_edge = (pos == rack_size - 1)
         
-        print(f"    -> Jig {next_jig} trouvée dans {rack_name} à pos {pos}/{rack_size-1}. Est-ce à l'Edge (right) ? {is_edge}")
+        print(f"    -> Jig {next_jig} trouvée dans {rack_name} à pos {pos}/{rack_size-1}. Est-ce à l'Edge (factory_side) ? {is_edge}")
 
         # --- 2A : direct → production
         if is_edge:
@@ -974,7 +974,7 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
             print(f"      [2B - Swap]: Nécessite un swap (Profondeur: {depth}).")
 
             # actions pour swap
-            atomic_actions = swap(state, rack_name, next_jig, "right", urgency) # WARNING: urgency added to call
+            atomic_actions = swap(state, rack_name, next_jig, "factory_side", urgency) # WARNING: urgency added to call
             
             if not atomic_actions:
                 print(f"        -> Échec: La macro swap a échoué (ex: pas de place/trailer pour déplacer les jigs bloquantes).")
