@@ -836,12 +836,19 @@ def evaluate_macro_action(state: State, macro_action) -> float:
 
     internal_cost = internal_ops + swap_penalty
 
-    # ----- 2) Priorité métier -----
+    
+    # ----- 2) Bonus métier : DeliverToHangar -----
+    deliver_bonus = 0.0
+
+    for action in macro_action.actions:
+        if action.__class__.__name__ == "DeliverToHangar":
+            deliver_bonus = -3.0   # bonus fort (à ajuster)
+            break
     # Plus base_priority est négatif → plus l'action est prioritaire
     
 
     # ----- 3) Score final glouton -----
-    score = internal_cost 
+    score = internal_cost + deliver_bonus
 
     return score
 def empty_jig(state: State, jig: str) -> bool:
