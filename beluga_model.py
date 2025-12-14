@@ -67,6 +67,7 @@ class State:
     current_beluga: Optional[str] = None
     last_belugas: List[str] = field(default_factory=list)
     beluga_contents: List[str] = field(default_factory=list)  # seen from racks' side (ordered)
+    remaining_outgoing: List[str] = field(default_factory=list)  # jig types (classes) to be sent out
 
     # mapping production line name -> ordered list of delivered jigs
     production_line_deliveries: Dict[str, List[str]] = field(default_factory=dict)
@@ -301,6 +302,7 @@ class SwitchToNextBeluga(Action):
         if ns.current_beluga:
             ns.last_belugas.append(ns.current_beluga)
         ns.current_beluga = self.next_beluga
+        ns.remaining_outgoing = list(ns.flights[ns.current_beluga].outgoing)
         # clear beluga_contents for fresh flight (or load from flight incoming if desired)
         ns.beluga_contents = list(ns.flights[self.next_beluga].incoming)
         return ns
@@ -375,6 +377,7 @@ def load_instance_from_json(path: str) -> State:
     # set a default current_beluga (first in list) if exists
     flights_list = list(s.flights.keys())
     s.current_beluga = flights_list[0] if flights_list else None
+    s.remaining_outgoing= list(s.flights[s.current_beluga].outgoing) if s.current_beluga else []
     if s.current_beluga:
         s.beluga_contents = list(s.flights[s.current_beluga].incoming)
 
@@ -730,7 +733,7 @@ def swap(state: State, rack_name: str, jig_to_free: str, side: str, urgency: Dic
             actions.append(act)
     # Maintenant jig_to_free est à l'edge, on peut la manipuler
     return actions
-def send_empty_jig_to_beluga(state: State, jig: str, beluga_name: str) -> List[Action]:
+def send_empty_jig_to_beluga(state: State, jig: str) -> List[Action]:
     """
     Envoie une jig vide (empty) de son rack vers un Beluga.
     Retourne la liste des actions élémentaires, ou [] si impossible.
@@ -769,12 +772,12 @@ def send_empty_jig_to_beluga(state: State, jig: str, beluga_name: str) -> List[A
     actions.append(pick)
 
     # 5) LoadBeluga
-    load = LoadBeluga(jig=jig, beluga=beluga_name, trailer=trailer_name)
-    if not load.is_applicable(state):
-        return []
-    state = load.apply(state)
-    actions.append(load)
+    if state.jigs[jig].type in state.remaining_outgoing:
+        state.remaining_outgoing.remove(state.jigs[jig].type)
+    else:
+        raise ValueError("No outgoing flight available for this jig type")
 
+    
     return actions
 
 
@@ -1011,29 +1014,26 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
     print("\n[SECTION 3: Chargement Beluga]")
     
     
-    if len(state.last_belugas) > 0:
-        for beluga in state.last_belugas:
 
-            for jig_type in state.flights[beluga].outgoing:
-                jig = find_best_jig_of_type(state, jig_type, empty=True)
-                if jig is None:
-                    print(f"    -> Aucun jig vide de type {jig_type} disponible pour le Beluga {beluga}.")
-                    continue
-                print("  Beluga vide. Tente de ramener jig outgoing", jig, "de la Beluga", beluga)
-                atomic_actions = send_empty_jig_to_beluga(state, jig, state.current_beluga)
-                if not atomic_actions:
-                    print(f"    -> Échec: Impossible de ramener {jig} de la Beluga {beluga}.")
-                    continue
-                macro = wrap_macro(
-                    atomic_actions,
-                    name=f"bring_back_jig({jig})"
-                )
-                score = evaluate_macro_action(state, macro)
-                actions_with_score.append((macro, score))
-                print(f"    -> Succès: Macro {macro.name} générée. Score: {score:.2f}, Actions: {len(atomic_actions)}")
-    else:
-        print("  Aucun Beluga précédent pour ramener des jigs outgoing.")
-        
+
+    for jig_type in state.remaining_outgoing:
+        jig = find_best_jig_of_type(state, jig_type, empty=True)
+        if jig is None:
+            print(f"    -> Aucun jig vide de type {jig_type} disponible pour le Beluga {state.current_beluga}.")
+            continue
+        print("Tente de ramener jig outgoing", jig, "dans le Beluga", state.current_beluga)
+        atomic_actions = send_empty_jig_to_beluga(state, jig)
+        if not atomic_actions:
+            print(f"    -> Échec: Impossible de ramener {jig} dans le Beluga {state.current_beluga}.")
+            continue
+        macro = wrap_macro(
+            atomic_actions,
+            name=f"bring_back_jig({jig})"
+        )
+        score = evaluate_macro_action(state, macro)
+        actions_with_score.append((macro, score))
+        print(f"    -> Succès: Macro {macro.name} générée. Score: {score:.2f}, Actions: {len(atomic_actions)}")
+
     
 
     print(f"\n--- Fin Génération. Total actions: {len(actions_with_score)} ---")
