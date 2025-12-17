@@ -1005,9 +1005,13 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
             if not atomic_actions:
                 print(f"        -> Échec: send_one_edge_jig n'a pas pu générer les actions (ex: manque trailer/hangar).")
                 continue
+            atomic_actions2= bring_jig_to_rack(state, next_jig, urgency)
+            if not atomic_actions2:
+                print(f"        -> Échec: bring_jig_to_rack n'a pas pu ramener la jig {next_jig} vers un rack après envoi.")
+                continue
 
             macro = wrap_macro(
-                atomic_actions,
+                atomic_actions + atomic_actions2,
                 name=f"send_to_prod({next_jig},{pl_name})"
             )
 
@@ -1041,10 +1045,14 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
             if not atomic_actions2:
                 print(f"        -> Échec: send_one_edge_jig a échoué après le swap virtuel.")
                 continue
+            atomic_actions3= bring_jig_to_rack(tmp_state, next_jig, urgency)
+            if not atomic_actions3:
+                print(f"        -> Échec: bring_jig_to_rack n'a pas pu ramener la jig {next_jig} vers un rack après envoi.")
+                continue
 
             # wrap_macro combiné des deux séquences
             macro = wrap_macro(
-                atomic_actions + atomic_actions2,
+                atomic_actions + atomic_actions2 + atomic_actions3,
                 swap_penalty=2 * depth,
                 name=f"swap_to_edge_and_send({next_jig})"
             )
