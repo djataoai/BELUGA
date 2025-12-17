@@ -531,12 +531,16 @@ def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: s
 
         # petit tie-breaker : favoriser consolidation (moins d'espaces libres)
         # on ajoute la proportion restante (plus petit = mieux)
-        remaining = cap - used - jig_size
-        score = (score, remaining)
-
-        if best_score is None or score < best_score:
-            best_score = score
-            best = (rname, side)
+        #remaining = cap - used - jig_size
+        #score = (score, remaining)
+        if side == "beluga_side":
+            if best_score is None or score > best_score:
+                best_score = score
+                best = (rname, side)
+        else:  # factory_side
+            if best_score is None or score < best_score:
+                best_score = score
+                best = (rname, side)
 
     return best
 
