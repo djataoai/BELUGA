@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import List, Dict, Optional, Tuple, Sequence
@@ -28,7 +29,7 @@ class Jig:
 class Rack:
     name: str
     size: int
-    jigs: List[str] = field(default_factory=list)  # ordered list, edge at index 0 or -1 (we'll treat rightmost as edge)
+    jigs: List[str] = field(default_factory=list)  # ordered list, edge at index 0 or -1 (we'll treat factory_sidemost as edge)
 
 @dataclass
 class Trailer:
@@ -37,7 +38,7 @@ class Trailer:
     load: Optional[str] = None
     # location: "beluga" | rack name | hangar name
     location: str = "beluga"
-    # parked side : "left" | "right" | None ("null")
+    # parked side : "beluga_side" | "factory_side" | None ("null")
     side: Optional[str] = None
 
 @dataclass
@@ -66,6 +67,7 @@ class State:
     current_beluga: Optional[str] = None
     last_belugas: List[str] = field(default_factory=list)
     beluga_contents: List[str] = field(default_factory=list)  # seen from racks' side (ordered)
+    remaining_outgoing: List[str] = field(default_factory=list)  # jig types (classes) to be sent out
 
     # mapping production line name -> ordered list of delivered jigs
     production_line_deliveries: Dict[str, List[str]] = field(default_factory=dict)
@@ -149,7 +151,7 @@ class UnloadBeluga(Action):
 
     def is_applicable(self, s: State) -> bool:
         # jig must be in beluga_contents and current beluga matches and trailer empty & at beluga
-        return (s.current_beluga == self.beluga) and (self.jig in s.beluga_contents) and (s.trailer_load.get(self.trailer) is None) and (s.trailer_location.get(self.trailer, ("beluga", None))[0] == "beluga")
+        return (s.current_beluga == self.beluga) and (self.jig in s.beluga_contents) and (s.trailer_load.get(self.trailer) is None) and (s.trailer_location.get(self.trailer, ("beluga", "beluga_side"))[1] == "beluga_side")
 
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
@@ -157,6 +159,36 @@ class UnloadBeluga(Action):
         ns = s.copy()
         ns.beluga_contents.remove(self.jig)
         ns.trailer_load[self.trailer] = self.jig
+        return ns
+@dataclass
+class RegisterOutgoingJig(Action):
+    jig: str
+    trailer: str
+    beluga: Optional[str] = None  # optional, for clarity
+
+    def __post_init__(self):
+        self.name = f"register_outgoing_jig({self.jig},{self.trailer})"
+
+    def is_applicable(self, s: State) -> bool:
+        return s.trailer_load.get(self.trailer) == self.jig
+
+    def apply(self, s: State) -> State:
+        if not self.is_applicable(s):
+            raise ValueError("Action not applicable")
+
+        ns = s.copy()
+
+        # 1) libérer le trailer
+        ns.trailer_load[self.trailer] = None
+        ns.trailer_location[self.trailer] = ("beluga", "beluga_side")
+
+        # 2) consommer le vol sortant
+        jig_type = ns.jigs[self.jig].type
+        if jig_type not in ns.remaining_outgoing:
+            raise ValueError("No outgoing flight available for this jig type")
+
+        ns.remaining_outgoing.remove(jig_type)
+
         return ns
 
 
@@ -180,7 +212,7 @@ class GetFromHangar(Action):
         ns.hangar_host[self.hangar] = None
         ns.trailer_load[self.trailer] = self.jig
         # set trailer location to hangar (maybe now moving)
-        ns.trailer_location[self.trailer] = (self.hangar, None)
+        
         return ns
 
 
@@ -234,9 +266,9 @@ class PutDownRack(Action):
         
         ns.trailer_load[self.trailer] = None
         # edge insertion - define as append to the end for Beluga side
-        if self.side == "left":
+        if self.side == "beluga_side":
             ns.rack_contents[self.rack].insert(0, self.jig)
-        elif self.side == "right":
+        elif self.side == "factory_side":
             ns.rack_contents[self.rack].append(self.jig)
         else:
             raise ValueError(f"Unknown side: {self.side}")
@@ -258,7 +290,7 @@ class PickUpRack(Action):
     def is_applicable(self, s: State) -> bool:
         # check trailer empty and jig at rack edge (we assume edge is last element)
         rack_list = s.rack_contents.get(self.rack, [])
-        if self.side == "left":
+        if self.side == "beluga_side":
             at_edge = rack_list[0] == self.jig if rack_list else False
         else:
             at_edge = rack_list[-1] == self.jig if rack_list else False
@@ -269,13 +301,13 @@ class PickUpRack(Action):
         if not self.is_applicable(s):
             raise ValueError("Action not applicable")
         ns = s.copy()
-        if self.side == "left":
+        if self.side == "beluga_side":
             ns.rack_contents[self.rack].pop(0)   # premier
-        else:  # "right"
+        else:  # "factory_side"
             ns.rack_contents[self.rack].pop()    # dernier
 
         ns.trailer_load[self.trailer] = self.jig
-        ns.trailer_location[self.trailer] = ("beluga", None)  # assume moved to beluga
+        
         return ns
 
 
@@ -300,6 +332,7 @@ class SwitchToNextBeluga(Action):
         if ns.current_beluga:
             ns.last_belugas.append(ns.current_beluga)
         ns.current_beluga = self.next_beluga
+        ns.remaining_outgoing = list(ns.flights[ns.current_beluga].outgoing)
         # clear beluga_contents for fresh flight (or load from flight incoming if desired)
         ns.beluga_contents = list(ns.flights[self.next_beluga].incoming)
         return ns
@@ -330,12 +363,12 @@ def load_instance_from_json(path: str) -> State:
         s.racks[rack.name] = rack
         s.rack_contents[rack.name] = list(rack.jigs)
 
-    # trailers beluga + factory
+
     # trailers beluga
     for t in data.get("trailers_beluga", []):
         trailer = Trailer(
             name=t["name"],
-            side="left",
+            side="beluga_side",
             location="beluga"
         )
         s.trailers[trailer.name] = trailer
@@ -346,7 +379,7 @@ def load_instance_from_json(path: str) -> State:
     for t in data.get("trailers_factory", []):
         trailer = Trailer(
             name=t["name"],
-            side="right",
+            side="factory_side",
             location="factory"
         )
         s.trailers[trailer.name] = trailer
@@ -374,10 +407,13 @@ def load_instance_from_json(path: str) -> State:
     # set a default current_beluga (first in list) if exists
     flights_list = list(s.flights.keys())
     s.current_beluga = flights_list[0] if flights_list else None
+    s.remaining_outgoing= list(s.flights[s.current_beluga].outgoing) if s.current_beluga else []
     if s.current_beluga:
         s.beluga_contents = list(s.flights[s.current_beluga].incoming)
 
     return s
+# EVOLVE-BLOCK-START
+
 
 
 # ---------- Example heuristic stub (greedy constructive) ----------
@@ -417,8 +453,7 @@ def find_trailer_at(state: State,  side: str, require_empty: bool=True) -> Optio
         
         if side is not None and tr_side != side:
             continue
-        if require_empty and load is not None:
-            continue
+        
         return tr
     return None
 
@@ -427,29 +462,69 @@ def find_rack_and_pos(state: State, jig: str) -> Tuple[Optional[str], Optional[i
         if jig in contents:
             return rname, contents.index(jig)
     return None, None
+def find_next_beluga(state: State) -> Optional[str]:
+    """
+    Retourne le nom de la prochaine Beluga à utiliser, ou None si aucune.
+    """
+    belugas = list(state.flights.keys())
+    if state.current_beluga is None:
+        return belugas[0] if belugas else None
+    else:
+        try:
+            idx = belugas.index(state.current_beluga)
+            if idx + 1 < len(belugas):
+                return belugas[idx + 1]
+            else:
+                return None
+        except ValueError:
+            return None
+
+def find_best_jig_of_type(state: State, type: str, empty=True) -> Optional[str]:
+    """
+    Retourne le jig du type donné le plus proche de beluga_side, ou None si aucun.
+    """
+    best_jig = None
+    best_distance = float('inf')
+    
+    for rname, contents in state.rack_contents.items():
+        for idx, jig_name in enumerate(contents):
+            jig = state.jigs[jig_name]
+            if empty and not state.jig_empty.get(jig_name, True):
+                continue
+            if jig.type == type:
+                # Distance from beluga_side edge (index 0)
+                distance = idx
+                if distance < best_distance:
+                    best_distance = distance
+                    best_jig = jig_name
+    
+    return best_jig
 
 
 def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: str) -> Optional[str]:
     """
-    Retourne le meilleur rack (nom) pour poser `jig` en respectant `side` ("left" ou "right").
+    Retourne le meilleur rack (nom) pour poser `jig` en respectant `side` ("beluga_side" ou "factory_side").
     Retourne None si aucun rack n'a de place.
     """
     best = (None, None)
     best_score = None
     jig_size = get_jig_size(state, jig)
+    
 
     for rname, contents in state.rack_contents.items():
         # capacité utilisée
         used = sum(get_jig_size(state, j) for j in contents)
         cap = state.racks[rname].size
+        print(f"Évaluation du rack {rname}: capacité {cap}, utilisé {used}, jig size {jig_size}")
         if used + jig_size > cap:
+            print(f"Rack {rname} pas assez de place pour jig {jig}.")
             continue  # pas assez de place
 
         # déterminer quel edge serait bloqué par placement
-        if side == "left":
-            # insertion en tête, l'élément bloqué sera l'ancien left edge (index 0)
+        if side == "beluga_side":
+            # insertion en tête, l'élément bloqué sera l'ancien beluga_side edge (index 0)
             blocked = contents[0] if contents else None
-        else:  # "right"
+        else:  # "factory_side"
             blocked = contents[-1] if contents else None
 
         blocked_urg = urgency.get(blocked, -1) if blocked is not None else -1
@@ -457,18 +532,25 @@ def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: s
         # score simple : urgence bloquée (on veut MINIMISER)
         score = blocked_urg
 
-        
-
-        if best_score is None or score < best_score:
-            best_score = score
-            best = (rname, side)
+        # petit tie-breaker : favoriser consolidation (moins d'espaces libres)
+        # on ajoute la proportion restante (plus petit = mieux)
+        #remaining = cap - used - jig_size
+        #score = (score, remaining)
+        if side == "beluga_side":
+            if best_score is None or score > best_score:
+                best_score = score
+                best = (rname, side)
+        else:  # factory_side
+            if best_score is None or score < best_score:
+                best_score = score
+                best = (rname, side)
 
     return best
 
 def move_one_edge_jig_to_rack(state: State, jig: str, dest_rack: str ) -> List[Action]:
     """
     Déplace une jig située à un edge d'un rack source vers un rack destination.
-    On conserve le même edge (left ou right).
+    On conserve le même edge (beluga_side ou factory_side).
     Retourne une liste d'actions élémentaires, ou [] si impossible.
     """
 
@@ -480,10 +562,10 @@ def move_one_edge_jig_to_rack(state: State, jig: str, dest_rack: str ) -> List[A
         if not contents:
             continue
         if contents[0] == jig:
-            src_rack, side = r, "left"
+            src_rack, side = r, "beluga_side"
             break
         if contents[-1] == jig:
-            src_rack, side = r, "right"
+            src_rack, side = r, "factory_side"
             break
 
     if src_rack is None:
@@ -537,10 +619,10 @@ def send_one_edge_jig(state: State, jig: str, target: str) -> List[Action]:
         if not contents:
             continue
         if contents[0] == jig:
-            src_rack, side = r, "left"
+            src_rack, side = r, "beluga_side"
             break
         if contents[-1] == jig:
-            src_rack, side = r, "right"
+            src_rack, side = r, "factory_side"
             break
 
     if src_rack is None:
@@ -586,6 +668,7 @@ def send_one_edge_jig(state: State, jig: str, target: str) -> List[Action]:
         return []
 
     return []
+
 def unload_jig_from_beluga(state: State, jig: str) -> List[Action]:
     """
     Décharge une jig de la Beluga actuelle vers un trailer vide au même côté.
@@ -595,28 +678,55 @@ def unload_jig_from_beluga(state: State, jig: str) -> List[Action]:
 
     # Vérifier que la jig est dans la Beluga
     if jig not in state.beluga_contents:
+        print("La jig n'est pas dans le beluga")
         return []
 
-    # Chercher un trailer vide coté Beluga
+ # Chercher un trailer vide coté Beluga
     trailer = None
+    
+    
     for tr_name, load in state.trailer_load.items():
-        loc, side = state.trailer_location.get(tr_name, ("beluga", "left"))
-        if load is None and side == "left":
+        # Utiliser ("beluga", None) comme fallback si le trailer n'a pas de location/side dans trailer_location
+        loc, side = state.trailer_location.get(tr_name, ("beluga", None)) 
+        
+        
+        # Conditions originales pour le déchargement (doivent être vérifiées) :
+        is_empty = (load is None)
+        is_at_beluga = (loc == "beluga")
+        
+        # Votre code initial vérifiait uniquement le side et s'arrêtait immédiatement
+        if side == "beluga_side":
+            
             trailer = tr_name
-            break
+            break # Arrêt immédiat dès le premier trailer avec side='beluga_side', même s'il est chargé ou ailleurs.
+        
+   
+    
     if trailer is None:
+        print("Pas de trailer vide côté Beluga")
         return []  # pas de trailer vide disponible
 
     # Créer action de déchargement
     unload = UnloadBeluga(jig=jig, beluga=state.current_beluga, trailer=trailer)
     if unload.is_applicable(state):
+        
+        state_int = unload.apply(state)
         actions.append(unload)
-    rname, side= choose_rack_for_jig(state, jig, compute_urgency(state), "left")
+    else :
+        print("Action UnloadBeluga NON applicable. \n")
+        return []
+        
+    rname, side= choose_rack_for_jig(state, jig, compute_urgency(state), "beluga_side")
     trailer = find_trailer_at(state, side, require_empty=True)
+
     load = PutDownRack(jig=jig, trailer=trailer, rack=rname, side=side)
-    if load.is_applicable(state):
+    if load.is_applicable(state_int):
+        
         actions.append(load)
         return actions
+    else :
+        print("Action PutDownRack NON applicable. \n")  
+        
 
     return []
 
@@ -624,7 +734,7 @@ def unload_jig_from_beluga(state: State, jig: str) -> List[Action]:
 def swap(state: State, rack_name: str, jig_to_free: str, side: str, urgency: Dict[str, int]) -> List[Action]:
     """
     Libère jig_to_free dans rack rack_name en déplaçant toutes les jigs devant elle
-    dans la direction side (left ou right).
+    dans la direction side (beluga_side ou factory_side).
     
     Retourne la liste des Actions générées.
     """
@@ -632,10 +742,10 @@ def swap(state: State, rack_name: str, jig_to_free: str, side: str, urgency: Dic
     rack_contents = state.rack_contents[rack_name]
     
     # Déterminer les jigs devant jig_to_free selon le side
-    if side == "left":
+    if side == "beluga_side":
         idx_jig = rack_contents.index(jig_to_free)
         jigs_a_deplacer = rack_contents[:idx_jig]  # tout ce qui est avant
-    else:  # "right"
+    else:  # "factory_side"
         idx_jig = rack_contents.index(jig_to_free)
         jigs_a_deplacer = rack_contents[idx_jig + 1:]  # tout ce qui est après
         jigs_a_deplacer.reverse()  # pour déplacer dans l'ordre correct
@@ -658,6 +768,65 @@ def swap(state: State, rack_name: str, jig_to_free: str, side: str, urgency: Dic
             actions.append(act)
     # Maintenant jig_to_free est à l'edge, on peut la manipuler
     return actions
+def send_empty_jig_to_beluga(state: State, jig: str) -> List[Action]:
+    """
+    Envoie une jig vide (empty) de son rack vers un Beluga.
+    Retourne la liste des actions élémentaires, ou [] si impossible.
+    """
+    actions = []
+    sim_state = state.copy()   # ← COPIE LOCALE
+
+    # 1) Trouver le rack où se trouve la jig
+    rname, pos = find_rack_and_pos(sim_state, jig)
+    if rname is None:
+        print("La jig n'est pas dans un rack")
+        return []
+
+    side = "beluga_side"
+
+    # 2) Trouver un trailer vide au bon side
+    trailer_name = find_trailer_at(sim_state, side=side, require_empty=True)
+    if trailer_name is None:
+        print("Pas de trailer vide disponible au bon side")
+        for tr, side_loc in sim_state.trailer_location.items():
+            print(f"Trailer {tr} à l'emplacement {side_loc}")
+        return []
+
+    # 3) Vérifier si la jig est en bord de rack
+    at_edge = (sim_state.rack_contents[rname][0] == jig)
+
+    # Si non : swap pour libérer la jig
+    if not at_edge:
+        swap_actions = swap(sim_state, rname, jig, side, compute_urgency(sim_state))
+        if not swap_actions:
+            print("Impossible de libérer la jig via swap")
+            return []
+        for act in swap_actions:
+            sim_state = act.apply(sim_state)
+            actions.append(act)
+
+    # 4) PickUpRack
+    pick = PickUpRack(jig=jig, trailer=trailer_name, rack=rname, side=side)
+    if not pick.is_applicable(sim_state):
+        print("Action PickUpRack NON applicable.")
+        return []
+
+    sim_state = pick.apply(sim_state)
+    actions.append(pick)
+
+    # 5) LoadBeluga (consommation logique)
+    finalize = RegisterOutgoingJig(jig=jig, trailer=trailer_name, beluga=sim_state.current_beluga)
+    if not finalize.is_applicable(sim_state):
+        print("Action RegisterOutgoingJig NON applicable.")
+        return []
+
+    sim_state = finalize.apply(sim_state)
+    actions.append(finalize)
+
+    return actions
+
+
+
 @dataclass
 class MacroAction(Action):
     actions: List[Action]          # liste des actions internes
@@ -670,18 +839,17 @@ class MacroAction(Action):
             self.name = f"macro({','.join(a.name for a in self.actions)})"
 
     def is_applicable(self, s: State) -> bool:
-        ns = s
-        for a in self.actions:
-            if not a.is_applicable(ns):
-                return False
-            ns = a.apply(ns)
-        return True
+        # une macro action est applicable si TOUTES les actions internes le sont
+        return all(a.is_applicable(s) for a in self.actions)
 
     def apply(self, s: State) -> State:
+        print("Applying MacroAction:", self.name)
         ns = s
         for a in self.actions:
             ns = a.apply(ns)
         return ns
+
+
 def wrap_macro(actions: List[Action], swap_penalty: float = 0.0, name: str = "") -> MacroAction:
     return MacroAction(
         actions=actions,
@@ -714,15 +882,19 @@ def evaluate_macro_action(state: State, macro_action) -> float:
 
     internal_cost = internal_ops + swap_penalty
 
-    # ----- 2) Priorité métier -----
-    # Plus base_priority est négatif → plus l'action est prioritaire
-    base_priority = getattr(macro_action, "base_priority", 0.0)
+    
+    # ----- 2) Bonus métier : DeliverToHangar -----
+    deliver_bonus = 0.0
 
-    # facteur multiplicatif, jamais < 1
-    priority_boost = 1.0 + max(0.0, -base_priority)
+    for action in macro_action.actions:
+        if action.__class__.__name__ == "DeliverToHangar":
+            deliver_bonus = -3.0   # bonus fort (à ajuster)
+            break
+    # Plus base_priority est négatif → plus l'action est prioritaire
+    
 
     # ----- 3) Score final glouton -----
-    score = internal_cost / priority_boost
+    score = internal_cost + deliver_bonus
 
     return score
 def empty_jig(state: State, jig: str) -> bool:
@@ -754,7 +926,7 @@ def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[A
     s_after_get = get.apply(state)
 
     # Choisir rack pour poser la jig
-    side = "right"  # choix arbitraire
+    side = "factory_side"  # choix arbitraire
     rname , side = choose_rack_for_jig(s_after_get, jig, urgency, side)
     if rname is None:
         return []
@@ -771,51 +943,82 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
 
     actions_with_score = []
     beluga_empty = len(state.beluga_contents) == 0
+    jig_types_stored= len(state.remaining_outgoing) == 0
+    print(f"\n--- Génération d'actions ---")
+    print(f"État Beluga vide: {beluga_empty}. Contenu actuel: {state.beluga_contents}")
 
     # ============================================================
     # 1) Décharger Beluga
     # ============================================================
-    for jig in state.beluga_contents:
+    if beluga_empty and jig_types_stored:
+        next_beluga = find_next_beluga(state)
+        if next_beluga is not None:
+            print(f"  Beluga est vide. Tente de switcher vers la prochaine Beluga: {next_beluga}")
+            switch_action = SwitchToNextBeluga(next_beluga=next_beluga)
+            if switch_action.is_applicable(state):
+                macro = wrap_macro([switch_action], name=f"switch_to_next_beluga({next_beluga})")
+                score = -10.0  # bonus fort pour switch
+                actions_with_score.append((macro, score))
+                print(f"    -> Succès: Macro {macro.name} générée. Score: {score:.2f}")
+            else:
+                print(f"    -> Échec: SwitchToNextBeluga non applicable.")
 
+    print("\n[SECTION 1: Déchargement Beluga]")
+    for jig in state.beluga_contents:
+        print(f"  Tente de décharger la jig {jig}...")
+        
         atomic_actions = unload_jig_from_beluga(state, jig)
+        
         if not atomic_actions:
-            print(f"Impossible de décharger la jig {jig} de la Beluga.")
+            print(f" -> Échec: Impossible de générer des actions atomiques pour décharger {jig}.")
             continue
 
         macro = wrap_macro(atomic_actions, name=f"unload_beluga({jig})")
         score = evaluate_macro_action(state, macro)
 
         actions_with_score.append((macro, score))
-
+     
     # ============================================================
     # 2) Envoyer des jigs vers la production 
     # ============================================================
+    print("\n[SECTION 2: Envoi vers Production]")
     for pl_name, pl in state.production_lines.items():
-
+        
         delivered_count = len(state.production_line_deliveries.get(pl_name, []))
+        print(f"  Ligne de production {pl_name} (Schedule: {len(pl.schedule)}, Livré: {delivered_count})")
+        
         if delivered_count >= len(pl.schedule):
-            print(f"Ligne {pl_name} déjà complète.")
+            print(f"    -> Pline {pl_name} complète. Skip.")
             continue
 
         next_jig = pl.schedule[delivered_count]
+        print(f"    -> Prochaine jig requise: {next_jig} (Urgence: {urgency.get(next_jig, 0)})")
 
         rack_name, pos = find_rack_and_pos(state, next_jig)
         if rack_name is None:
-            print(f"La jig {next_jig} n'est dans aucun rack.")
+            print(f"    -> Échec: Jig {next_jig} introuvable dans un rack.")
             continue
 
-        is_edge = (pos == len(state.rack_contents[rack_name]) - 1)
+        rack_size = len(state.rack_contents[rack_name])
+        is_edge = (pos == rack_size - 1)
+        
+        print(f"    -> Jig {next_jig} trouvée dans {rack_name} à pos {pos}/{rack_size-1}. Est-ce à l'Edge (factory_side) ? {is_edge}")
 
         # --- 2A : direct → production
         if is_edge:
-
+            print(f"      [2A - Direct]: Tente d'envoyer {next_jig} directement.")
             atomic_actions = send_one_edge_jig(state, next_jig, pl_name)
+            
             if not atomic_actions:
-                print(f"Impossible d'envoyer directement la jig {next_jig} vers {pl_name}.")
+                print(f"        -> Échec: send_one_edge_jig n'a pas pu générer les actions (ex: manque trailer/hangar).")
+                continue
+            atomic_actions2= bring_jig_to_rack(state, next_jig, urgency)
+            if not atomic_actions2:
+                print(f"        -> Échec: bring_jig_to_rack n'a pas pu ramener la jig {next_jig} vers un rack après envoi.")
                 continue
 
             macro = wrap_macro(
-                atomic_actions,
+                atomic_actions + atomic_actions2,
                 name=f"send_to_prod({next_jig},{pl_name})"
             )
 
@@ -823,65 +1026,80 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
             score = evaluate_macro_action(state, macro)
 
             actions_with_score.append((macro, score))
+            print(f"        -> Succès: Macro {macro.name} générée. Score: {score:.2f}, Actions: {len(atomic_actions)}")
+
 
         # --- 2B : swap nécessaire
         else:
-            depth = len(state.rack_contents[rack_name]) - pos - 1
+            depth = rack_size - pos - 1
+            print(f"      [2B - Swap]: Nécessite un swap (Profondeur: {depth}).")
 
             # actions pour swap
-            atomic_actions = swap(state, rack_name, next_jig, "right")
+            atomic_actions = swap(state, rack_name, next_jig, "factory_side", urgency) # WARNING: urgency added to call
+            
             if not atomic_actions:
+                print(f"        -> Échec: La macro swap a échoué (ex: pas de place/trailer pour déplacer les jigs bloquantes).")
                 continue
-
+            
             # appliquer progressivement le swap pour obtenir l'état mis à jour
             tmp_state = state
             for act in atomic_actions:
                 tmp_state = act.apply(tmp_state)
-
+            
             # maintenant seulement on peut envoyer la jig à la plateforme
             atomic_actions2 = send_one_edge_jig(tmp_state, next_jig, pl_name)
+            
             if not atomic_actions2:
+                print(f"        -> Échec: send_one_edge_jig a échoué après le swap virtuel.")
+                continue
+            atomic_actions3= bring_jig_to_rack(tmp_state, next_jig, urgency)
+            if not atomic_actions3:
+                print(f"        -> Échec: bring_jig_to_rack n'a pas pu ramener la jig {next_jig} vers un rack après envoi.")
                 continue
 
             # wrap_macro combiné des deux séquences
             macro = wrap_macro(
-                atomic_actions + atomic_actions2,
+                atomic_actions + atomic_actions2 + atomic_actions3,
                 swap_penalty=2 * depth,
-                name=f"swap_to_edge({next_jig})"
+                name=f"swap_to_edge_and_send({next_jig})"
             )
-
-
+            
             priority = -5 * urgency.get(next_jig, 0)
             score = evaluate_macro_action(state, macro)
 
             actions_with_score.append((macro, score))
+            print(f"        -> Succès: Macro {macro.name} générée. Score: {score:.2f}, Swap Penalty: {2*depth}, Actions: {len(atomic_actions) + len(atomic_actions2)}")
 
     # ============================================================
     # 3) Charger Beluga (si vide)
     # ============================================================
-    if beluga_empty:
-        for rack_name, contents in state.rack_contents.items():
+    print("\n[SECTION 3: Chargement Beluga]")
+    
+    
 
-            if not contents:
-                continue
 
-            jig = contents[0]
+    for jig_type in set(state.remaining_outgoing):
+        print(f"  Tente de ramener un jig vide de type {jig_type} pour le Beluga {state.current_beluga}...")
+        jig = find_best_jig_of_type(state, jig_type, empty=True)
+        if jig is None:
+            print(f"    -> Aucun jig vide de type {jig_type} disponible pour le Beluga {state.current_beluga}.")
+            continue
+        print("Tente de ramener jig outgoing", jig, "dans le Beluga", state.current_beluga)
+        atomic_actions = send_empty_jig_to_beluga(state, jig)
+        if not atomic_actions:
+            print(f"    -> Échec: Impossible de ramener {jig} dans le Beluga {state.current_beluga}.")
+            continue
+        macro = wrap_macro(
+            atomic_actions,
+            name=f"bring_back_jig({jig})"
+        )
+        score = evaluate_macro_action(state, macro)
+        actions_with_score.append((macro, score))
+        print(f"    -> Succès: Macro {macro.name} générée. Score: {score:.2f}, Actions: {len(atomic_actions)}")
 
-            if not state.jig_empty.get(jig, True):
-                continue
+    
 
-            atomic_actions = send_one_edge_jig(state, jig, "beluga")
-            if not atomic_actions:
-                continue
-
-            macro = wrap_macro(
-                atomic_actions,
-                name=f"load_beluga({jig})"
-            )
-
-            score = evaluate_macro_action(state, macro, base_priority=+5)
-            actions_with_score.append((macro, score))
-
+    print(f"\n--- Fin Génération. Total actions: {len(actions_with_score)} ---")
     return actions_with_score
 
 
@@ -890,6 +1108,7 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
 def greedy_next_action(state: State) -> Optional[Action]:
     urgency = compute_urgency(state)
     actions_with_score = generate_possible_actions(state, urgency)
+    print(f"Generated {len(actions_with_score)} possible actions.")
     if not actions_with_score:
         return None
     # Choisir l'action avec le score minimal
@@ -904,92 +1123,79 @@ def is_terminal_state(state: State) -> bool:
         for pl, line in state.production_lines.items()
     )
 
-    beluga_empty = len(state.beluga_contents) == 0
+    beluga_empty = (len(state.beluga_contents) == 0)
 
     return production_done and beluga_empty
+
+def action_to_evaluator_dict(action: Action) -> dict:
+    """
+    Transforme une action atomique en dictionnaire JSON compatible
+    avec l'évaluateur déterministe.
+    """
+    if isinstance(action, LoadBeluga):
+        return {"name": "load_beluga", "j": action.jig, "b": action.beluga, "t": action.trailer}
+    elif isinstance(action, UnloadBeluga):
+        return {"name": "unload_beluga", "j": action.jig, "b": action.beluga, "t": action.trailer}
+    elif isinstance(action, PutDownRack):
+        return {"name": "put_down_rack", "j": action.jig, "t": action.trailer, "r": action.rack, "s": action.side}
+    elif isinstance(action, PickUpRack):
+        return {"name": "pick_up_rack", "j": action.jig, "t": action.trailer, "r": action.rack, "s": action.side}
+    elif isinstance(action, GetFromHangar):
+        return {"name": "get_from_hangar", "j": action.jig, "h": action.hangar, "t": action.trailer}
+    elif isinstance(action, DeliverToHangar):
+        return {"name": "deliver_to_hangar", "j": action.jig, "h": action.hangar, "t": action.trailer, "pl": action.production_line}
+    elif isinstance(action, SwitchToNextBeluga):
+        return {"name": "switch_to_next_beluga", "b": action.next_beluga}
+    elif isinstance(action, RegisterOutgoingJig):
+        return {"name": "load_beluga", "j": action.jig, "b": action.beluga, "t": action.trailer}
+    else:
+        raise ValueError(f"Action inconnue pour JSON évaluateur : {action}")
 
 
 def run_greedy_planning(initial_state: State, output_path: str = "result.json"):
     """
-    Applique le glouton (greedy_next_action) jusqu'à blocage complet.
-    Chaque macro-action est appliquée d'un bloc via macro.apply(state).
-    La trace complète des décisions est enregistrée dans un JSON.
+    Applique le glouton jusqu'à blocage et produit un JSON compatible
+    avec l'évaluateur déterministe.
     """
-
     state = initial_state.copy()
-    history = []
-    step = 0
+    action_history = []
+    step=0
 
     while True:
-
-        # ============================
-        # 1) CHOIX GLUTTON
-        # ============================
         macro: Optional[MacroAction] = greedy_next_action(state)
-
         if macro is None:
             print("Aucune action possible → arrêt.")
             break
 
-        # ============================
-        # 2) LOGGING POUR LE JSON
-        # ============================
-        history.append({
-            "step": step,
-            "macro_name": macro.name,
-            "swap_penalty": getattr(macro, "swap_penalty", 0),
-            "internal_action_count": macro.internal_action_count,
-            "internal_actions": [a.name for a in macro.actions]
-        })
-
-        # ============================
-        # 3) APPLICATION DE LA MACRO
-        # ============================
-       
-        state = macro.apply(state)
-
+        # appliquer toutes les actions atomiques et les convertir pour l'évaluateur
+        for a in macro.actions:
+            if not a.is_applicable(state):
+                raise ValueError(f"Action non applicable : {a}")
+            state = a.apply(state)
+            action_history.append(action_to_evaluator_dict(a))
         step += 1
 
-        # ============================
-        # 4) ARRÊT SI TERMINAL
-        # ============================
         if is_terminal_state(state):
             print("État terminal atteint → arrêt.")
             break
 
-    # ============================
-    # 5) ÉCRITURE JSON
-    # ============================
+    # écrire JSON compatible
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=2, ensure_ascii=False)
+        json.dump(action_history, f, indent=2, ensure_ascii=False)
 
     print(f"Plan glouton sauvegardé dans {output_path}")
-    return history
+    return action_history
+# EVOLVE-BLOCK-END
 
 
 
-# ---------- Minimal demonstration when run as script ----------
 
-# if __name__ == "__main__":
-#     # path where you uploaded your JSON
-#     path = "f.json"
-#     s = load_instance_from_json(path)
-#     print("Loaded state:")
-#     print("Current beluga:", s.current_beluga)
-#     print("Beluga contents (edge last):", s.beluga_contents)
-#     print("Trailers:", {t: s.trailer_load[t] for t in s.trailer_load})
-#     # propose an action
-#     a = greedy_next_action(s)
-#     print("Greedy selected action:", a)
-#     if a and a.is_applicable(s):
-#         s2 = a.apply(s)
-#         print("Applied action, new trailer_load:", s2.trailer_load)
-#     else:
-#         print("No applicable greedy action found.")
+
+# ---------- Main example usage ----------
 
 if __name__ == "__main__":
     # path where you uploaded your JSON
-    path = "f.json"
+    path = "problem_103_s145_j266_r20_oc21_f173.json"
     s = load_instance_from_json(path)
     print("Loaded state:")
     print("Current beluga:", s.current_beluga)
