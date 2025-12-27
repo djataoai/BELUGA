@@ -52,9 +52,9 @@ prompt:
        - Each flight has a fixed list of incoming and outgoing jigs by type.
 
     2. **Rack storage system**
-       - Racks have **two faces**:
-         - **Beluga-side** for handling jigs from/to the Beluga.
-         - **Factory-side** for handling jigs to/from production lines.
+       - Racks have **two edges**:
+         - **Beluga_side** for handling jigs from/to the Beluga.
+         - **Factory_side** for handling jigs to/from production lines.
        - When unloading the Beluga:
          - Use **Beluga-side trailers**.
          - Store incoming jigs on the **Beluga-face** of the rack.
@@ -89,10 +89,12 @@ prompt:
     - Maintain memory of visited or failed states to avoid repetition.
     - Separate high-level planning (what must be achieved) from low-level actions.
     - Use heuristic ordering rules:
-      - prioritize freeing blocking jigs,
+      - prioritize sending jigs to production lines and freeing blocking jigs,
       - respect production order,
       - manage simultaneous unloading/loading correctly,
       - reserve critical rack slots.
+      - Minimize unnecessary movements or swaps.
+      -backtrack when constraints cannot be satisfied, or when deadlocks arise(2,3 backtracks).
     - Correctness and deadlock avoidance are more important than speed.
 
     Focus on generating programs or policies that guarantee reachability of the final state
