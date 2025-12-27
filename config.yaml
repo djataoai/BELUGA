@@ -1,0 +1,132 @@
+# ============================================================
+# OpenEvolve configuration for the Beluga logistics problem
+# ============================================================
+
+max_iterations: 120
+checkpoint_interval: 10
+log_level: "INFO"
+
+# ============================================================
+# LLM configuration
+# ============================================================
+llm:
+  primary_model: "qwen2.5:7b"
+  primary_model_weight: 1.0
+  secondary_model: "qwen2.5:7b"
+  secondary_model_weight: 0.0
+  api_base: "http://localhost:11434/v1"
+  temperature: 0.6
+  top_p: 0.9
+  max_tokens: 8192
+  timeout: 600
+
+# ============================================================
+# Prompt configuration
+# ============================================================
+prompt:
+  system_message: |
+    You are an expert in automated planning, constraint-based scheduling,
+    and logistics control systems.
+
+    The problem concerns the logistics of jigs between three main subsystems:
+    - the Beluga aircraft,
+    - the rack storage system,
+    - the production lines.
+
+    The system must reach a final state where:
+    - all incoming jigs from all Beluga flights have been unloaded,
+    - all outgoing jigs for each Beluga are loaded,
+    - all production lines have received the required jigs in the exact schedule order,
+    - no deadlock or inaccessible configuration remains.
+
+    ###############################################################
+    # CONSTRAINTS
+    ###############################################################
+
+    Physical and logical constraints:
+
+    1. **Beluga handling**
+       - Incoming and outgoing jigs can be **handled simultaneously**.
+       - Jigs to be loaded for the next flight are maintained in a separate list; no physical hangar is modeled.
+       - Only one Beluga is processed at a time.
+       - Each flight has a fixed list of incoming and outgoing jigs by type.
+
+    2. **Rack storage system**
+       - Racks have **two faces**:
+         - **Beluga-side** for handling jigs from/to the Beluga.
+         - **Factory-side** for handling jigs to/from production lines.
+       - When unloading the Beluga:
+         - Use **Beluga-side trailers**.
+         - Store incoming jigs on the **Beluga-face** of the rack.
+         - Outgoing jigs for loading can be staged simultaneously in a separate list.
+       - When moving jigs to production:
+         - Use **Factory-side trailers**.
+         - Store jigs on the **Factory-face** of the rack.
+         - Jigs must be delivered to production respecting the exact order of the schedule.
+       - Only the first jig of each stack is accessible for load/unload.
+       - Rack capacity must never be exceeded.
+       - Swap operations at rack ends are allowed to unblock access.
+
+    3. **Production lines**
+       - Jigs must arrive **exactly in the order required by the production schedule**.
+       - Priorities in the schedule must be strictly respected.
+       - A jig type can only be consumed if it arrives at the correct line at the correct time.
+
+    4. **Actions**
+       - Allowed actions: load, unload, move between Beluga/racks/production via trailers, swap inside racks.
+       - Actions must respect capacities, access rules, and sequencing constraints.
+
+    5. **Deadlock avoidance**
+       - Plans must ensure that at any state, all required jigs remain eventually accessible.
+       - Partial plans that block future operations must be rolled back.
+
+    ###############################################################
+    # GUIDELINES
+    ###############################################################
+
+    - Reason explicitly in terms of system states and transitions.
+    - Use backtracking or rollback mechanisms for dead-end states.
+    - Maintain memory of visited or failed states to avoid repetition.
+    - Separate high-level planning (what must be achieved) from low-level actions.
+    - Use heuristic ordering rules:
+      - prioritize freeing blocking jigs,
+      - respect production order,
+      - manage simultaneous unloading/loading correctly,
+      - reserve critical rack slots.
+    - Correctness and deadlock avoidance are more important than speed.
+
+    Focus on generating programs or policies that guarantee reachability of the final state
+    while respecting all physical and logical constraints.
+
+  num_top_programs: 5
+  use_template_stochasticity: true
+
+# ============================================================
+# Database / population management
+# ============================================================
+database:
+  population_size: 80
+  archive_size: 40
+  num_islands: 6
+  elite_selection_ratio: 0.25
+  exploitation_ratio: 0.55
+
+# ============================================================
+# Evaluator configuration
+# ============================================================
+evaluator:
+  timeout: 120
+  cascade_evaluation: true
+  cascade_thresholds:
+    - 0.4   # partial feasibility (no immediate deadlock)
+    - 0.7   # successful handling of several Beluga flights
+    - 1.0   # full final state reached
+  parallel_evaluations: 4
+  use_llm_feedback: false
+
+# ============================================================
+# Evolution settings
+# ============================================================
+diff_based_evolution: false
+allow_full_rewrites: true
+max_code_length: 120000
