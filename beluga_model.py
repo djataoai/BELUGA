@@ -96,6 +96,11 @@ class State:
         # deep copy for immutability of apply
         return copy.deepcopy(self)
 
+@dataclass
+class SearchNode:
+    state: State
+    remaining_actions: List[MacroAction]
+    history: List[dict]
 
 # ---------- Actions ----------
 
@@ -239,8 +244,7 @@ class DeliverToHangar(Action):
         ns.hangar_host[self.hangar] = self.jig
         # then deliver to production line (append)
         ns.production_line_deliveries.setdefault(self.production_line, []).append(self.jig)
-        # empty hangar (assuming immediate)
-        ns.hangar_host[self.hangar] = None
+        
         return ns
 
 
@@ -639,6 +643,7 @@ def send_one_edge_jig(state: State, jig: str, target: str) -> List[Action]:
 
     # --- Cas 1: beluga ---
     if target == "beluga":
+        print("Cible: beluga")
         b = s_after_pick.current_beluga
         load = LoadBeluga(jig=jig, beluga=b, trailer=trailer)
         
@@ -649,6 +654,7 @@ def send_one_edge_jig(state: State, jig: str, target: str) -> List[Action]:
 
     # --- Cas 2: production ---
     if target in s_after_pick.production_lines:
+        print("Cible: production line")
         # Il faut un hangar vide pour la livraison
         hangar = None
         for h, host in s_after_pick.hangar_host.items():
@@ -908,16 +914,19 @@ def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[A
             hangar_name = h
             break
     if hangar_name is None:
+        print("La jig n'est pas dans un hangar")
         return []  # jig pas dans un hangar
     empty_jig(state, jig) 
     # Trouver trailer vide
     trailer = find_trailer_at(state, side=None, require_empty=True)
     if trailer is None:
+        print("Pas de trailer vide disponible")
         return []  # pas de trailer vide
 
     # Get from hangar
     get = GetFromHangar(jig=jig, hangar=hangar_name, trailer=trailer)
     if not get.is_applicable(state):
+        print("Action GetFromHangar NON applicable.")
         return []
     actions.append(get)
     s_after_get = get.apply(state)
@@ -926,11 +935,13 @@ def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[A
     side = "factory_side"  # choix arbitraire
     rname , side = choose_rack_for_jig(s_after_get, jig, urgency, side)
     if rname is None:
+        print("Aucun rack disponible pour poser la jig")
         return []
 
     # Put down rack
     put = PutDownRack(jig=jig, trailer=trailer, rack=rname, side=side)
     if not put.is_applicable(s_after_get):
+        print("Action PutDownRack NON applicable.")
         return []
     actions.append(put)
 
@@ -1176,6 +1187,82 @@ def run_greedy_planning(initial_state: State, output_path: str = "result.json"):
     # ============================
     # 5) ÉCRITURE JSON
     # ============================
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(history, f, indent=2, ensure_ascii=False)
+
+    print(f"Plan glouton sauvegardé dans {output_path}")
+    return history
+
+
+def run_greedy_with_backtracking(initial_state: State,output_path: str = "result.json"):
+
+    stack = []  # pile de backtracking
+    state = initial_state
+    history = []
+    step=0
+
+    while True:
+
+        # === 1. Fin si objectif atteint ===
+        if is_terminal_state(state):
+            return history
+
+        # === 2. Générer actions possibles ===
+        urgency = compute_urgency(state)
+        actions_with_score = generate_possible_actions(state, urgency)
+
+        # DEADLOCK → BACKTRACK
+        if not actions_with_score:
+            while stack:
+                node = stack.pop()
+
+                if node.remaining_actions:
+                    next_action = node.remaining_actions.pop(0)
+
+                    # Restaurer état
+                    state = node.state
+                    history = node.history.copy()
+                    for a in next_action.actions:
+                        if not a.is_applicable(state):
+                            raise ValueError(f"Action non applicable : {a}")
+                        state = a.apply(state)
+                        history.append(action_to_evaluator_dict(a))
+                    step += 1
+
+                    
+
+                    break
+            else:
+                print("Échec global : plus aucune alternative")
+                return history
+
+            continue  # on repart du nouvel état
+
+        # === 3. Trier les actions (greedy) ===
+        actions_with_score.sort(key=lambda x: x[1])
+
+        best_macro = actions_with_score[0][0]
+        alternatives = [a for a, _ in actions_with_score[1:]]
+
+        # === 4. Sauvegarder alternatives pour backtracking ===
+        stack.append(
+            SearchNode(
+                state=state,
+                remaining_actions=alternatives,
+                history=history.copy()
+            )
+        )
+
+        # === 5. Appliquer la meilleure ===
+        
+        for a in best_macro.actions:
+            if not a.is_applicable(state):
+                raise ValueError(f"Action non applicable : {a}")
+            state = a.apply(state)
+            history.append(action_to_evaluator_dict(a))
+        step += 1
+
+     # écrire JSON compatible
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(history, f, indent=2, ensure_ascii=False)
 
