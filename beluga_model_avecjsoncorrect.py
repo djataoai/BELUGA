@@ -1124,64 +1124,39 @@ def is_terminal_state(state: State) -> bool:
 
     return production_done and beluga_empty
 
-
 def run_greedy_planning(initial_state: State, output_path: str = "result.json"):
-    """
-    Applique le glouton (greedy_next_action) jusqu'à blocage complet.
-    Chaque macro-action est appliquée d'un bloc via macro.apply(state).
-    La trace complète des décisions est enregistrée dans un JSON.
-    """
-
     state = initial_state.copy()
     history = []
-    step = 0
 
     while True:
-
-        # ============================
-        # 1) CHOIX GLUTTON
-        # ============================
         macro: Optional[MacroAction] = greedy_next_action(state)
 
         if macro is None:
-            print("Aucune action possible → arrêt. mm")
+            print("Aucune action possible → arrêt.")
             break
 
-        # ============================
-        # 2) LOGGING POUR LE JSON
-        # ============================
-        history.append({
-            "step": step,
-            "macro_name": macro.name,
-            "swap_penalty": getattr(macro, "swap_penalty", 0),
-            "internal_action_count": macro.internal_action_count,
-            "internal_actions": [a.name for a in macro.actions]
-        })
+        # Extraction et mise à plat des actions élémentaires
+        for action in macro.actions:
+            history.append({
+                "name": action.name,
+                "j": getattr(action, "j", ""),
+                "b": getattr(action, "b", ""),
+                "t": getattr(action, "t", "")
+            })
 
-        # ============================
-        # 3) APPLICATION DE LA MACRO
-        # ============================
-       
+        # Application physique de la macro
         state = macro.apply(state)
 
-        step += 1
-
-        # ============================
-        # 4) ARRÊT SI TERMINAL
-        # ============================
         if is_terminal_state(state):
-            print("État terminal atteint → arrêt. tt")
+            print("État terminal atteint → arrêt.")
             break
 
-    # ============================
-    # 5) ÉCRITURE JSON
-    # ============================
+    # Écriture propre du fichier JSON
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=2, ensure_ascii=False)
+        json.dump(history, f, indent=4, ensure_ascii=False)
 
-    print(f"Plan glouton sauvegardé dans {output_path}")
+    print(f"Plan sauvegardé dans {output_path}")
     return history
-
 
 
 # ---------- Minimal demonstration when run as script ----------
