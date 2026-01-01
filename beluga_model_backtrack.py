@@ -275,6 +275,7 @@ class PutDownRack(Action):
             ns.rack_contents[self.rack].insert(0, self.jig)
         elif self.side == "factory_side":
             ns.rack_contents[self.rack].append(self.jig)
+            ns.jig_empty[self.jig] = True # mark as empty when put down at factory side
         else:
             raise ValueError(f"Unknown side: {self.side}")
         
@@ -748,13 +749,15 @@ def swap(state: State, rack_name: str, jig_to_free: str, side: str, urgency: Dic
         # 1) choisir un rack temporaire pour cette jig
         target_rack, target_side = choose_rack_for_jig(state, jig, urgency, side)
         if target_rack is None:
-            raise ValueError(f"Aucun rack disponible pour déplacer la jig {jig}")
-
+            print(f"[swap] Aucun rack disponible pour déplacer la jig {jig}, swap impossible.")
+            return []
+            
         # 2) déplacer la jig vers le rack choisi
         action = move_one_edge_jig_to_rack(state, jig, target_rack)
         if action is None:
-            raise ValueError(f"Impossible de déplacer la jig {jig} depuis {rack_name} vers {target_rack}")
-        
+            print(f"[swap] Impossible de déplacer la jig {jig} depuis {rack_name} vers {target_rack}")
+            return []
+           
         # 3) appliquer l'action sur le state
         for act in action:
             state = act.apply(state)
@@ -881,7 +884,7 @@ def evaluate_macro_action(state: State, macro_action) -> float:
 
     for action in macro_action.actions:
         if action.__class__.__name__ == "DeliverToHangar":
-            deliver_bonus = -3.0   # bonus fort (à ajuster)
+            deliver_bonus = -10.0   # bonus fort (à ajuster)
             break
     # Plus base_priority est négatif → plus l'action est prioritaire
     
@@ -921,7 +924,7 @@ def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[A
         return []
     actions.append(get)
     s_after_get = get.apply(state)
-    s_after_get.jig_empty[jig] = True  # marquer jig comme vide
+    
 
     # Choisir rack pour poser la jig
     side = "factory_side"  
