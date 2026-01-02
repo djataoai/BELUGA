@@ -1131,6 +1131,20 @@ def greedy_next_action(state: State) -> Optional[Action]:
     actions_with_score.sort(key=lambda x: x[1])
     return actions_with_score[0][0]
 
+def is_last_beluga(state: State) -> bool:
+    """
+    Retourne True si le Beluga courant est le dernier Beluga à traiter.
+    """
+    if state.current_beluga is None:
+        return False
+
+    all_belugas = set(state.flights.keys())
+    already_done = set(state.last_belugas)
+    remaining = all_belugas - already_done
+
+    # Si un seul Beluga reste et que c'est le courant
+    return len(remaining) == 1 and state.current_beluga in remaining
+
 
 def is_terminal_state(state: State) -> bool:
 
@@ -1142,7 +1156,7 @@ def is_terminal_state(state: State) -> bool:
     beluga_empty = (len(state.beluga_contents) == 0)
     no_remaining_outgoing = len(state.remaining_outgoing) == 0
 
-    return production_done and beluga_empty and no_remaining_outgoing
+    return production_done and beluga_empty and no_remaining_outgoing and is_last_beluga(state)
 
 def action_to_evaluator_dict(action: Action) -> dict:
     """
@@ -1202,69 +1216,93 @@ def run_greedy_planning(initial_state: State, output_path: str = "result.json"):
 
     print(f"Plan glouton sauvegardé dans {output_path}")
     return action_history
-def run_greedy_with_backtracking(initial_state: State,output_path: str = "result.json"):
+def run_greedy_with_backtracking(initial_state: State, output_path: str = "result.json", max_backtrack: int = 3):
 
     stack = []  # pile de backtracking
     state = initial_state
     history = []
-    step=0
+    step = 0
 
     while True:
 
         # === 1. Fin si objectif atteint ===
         if is_terminal_state(state):
             print("État terminal atteint → arrêt.")
-            return history
+            
+            # Nombre de jigs livrés par ligne de production
+            
+            for pl, deliveries in state.production_line_deliveries.items():
+                print(f"Ligne {pl} : {len(deliveries)} jigs livrés")
+
+            # Nombre de vols traités
+            print(f"Nombre de vols traités : {len(state.last_belugas)}")
+            break
 
         # === 2. Générer actions possibles ===
         urgency = compute_urgency(state)
         actions_with_score = generate_possible_actions(state, urgency)
         print(f"Step {step}: Généré {len(actions_with_score)} actions possibles.")
+
         # DEADLOCK → BACKTRACK
         if not actions_with_score:
-            while stack:
-                print("Deadlock détecté, backtracking au step", step)
-                node = stack.pop()
+            if not stack:
+                print("Échec global : plus aucune alternative")
+                # Nombre de jigs livrés par ligne de production
+                
+                for pl, deliveries in state.production_line_deliveries.items():
+                    print(f"Ligne {pl} : {len(deliveries)} jigs livrés")
 
+                # Nombre de vols traités
+                print(f"Nombre de vols traités : {len(state.last_belugas)}")
+                break
+
+
+            # Limiter le backtracking aux N derniers états
+            for node in reversed(stack[-max_backtrack:]):
                 if node.remaining_actions:
                     next_action = node.remaining_actions.pop(0)
 
-                    # Restaurer état
+                    # Restaurer état et historique
                     state = node.state
                     history = node.history.copy()
                     for a in next_action.actions:
                         if not a.is_applicable(state):
-                            raise ValueError(f"Action non applicable : {a}")
+                            print(f"Action non applicable pendant backtrack : {a}, on skip cette branche")
+                            state = None
+                            break
                         state = a.apply(state)
                         history.append(action_to_evaluator_dict(a))
-                    step += 1
 
-                    
-
-                    break
+                    if state is not None:
+                        step += 1
+                        break
             else:
-                print("Échec global : plus aucune alternative")
-                return history
+                print("Deadlock dans les derniers états : aucune alternative")
+                # Nombre de jigs livrés par ligne de production
+                for pl, deliveries in state.production_line_deliveries.items():
+                    print(f"Ligne {pl} : {len(deliveries)} jigs livrés")
 
-            continue  # on repart du nouvel état
+                # Nombre de vols traités
+                print(f"Nombre de vols traités : {len(state.last_belugas)}")
+                break
+
+            continue  # repartir du nouvel état
 
         # === 3. Trier les actions (greedy) ===
         actions_with_score.sort(key=lambda x: x[1])
-
         best_macro = actions_with_score[0][0]
         alternatives = [a for a, _ in actions_with_score[1:]]
 
         # === 4. Sauvegarder alternatives pour backtracking ===
         stack.append(
             SearchNode(
-                state=state,
+                state=state.copy(),
                 remaining_actions=alternatives,
                 history=history.copy()
             )
         )
 
         # === 5. Appliquer la meilleure ===
-        
         for a in best_macro.actions:
             if not a.is_applicable(state):
                 raise ValueError(f"Action non applicable : {a}")
@@ -1272,12 +1310,13 @@ def run_greedy_with_backtracking(initial_state: State,output_path: str = "result
             history.append(action_to_evaluator_dict(a))
         step += 1
 
-     # écrire JSON compatible
+    # écrire JSON compatible
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(history, f, indent=2, ensure_ascii=False)
 
     print(f"Plan glouton sauvegardé dans {output_path}")
     return history
+
 
 
 
