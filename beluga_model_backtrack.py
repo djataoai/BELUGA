@@ -912,7 +912,7 @@ def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[A
         return []  # jig pas dans un hangar
      
     # Trouver trailer vide
-    trailer = find_trailer_at(state, side=None, require_empty=True)
+    trailer = find_trailer_at(state, side="factory_side", require_empty=True)
     if trailer is None:
         print("Pas de trailer vide disponible")
         return []  # pas de trailer vide
@@ -1303,6 +1303,7 @@ def run_greedy_with_backtracking(initial_state: State, output_path: str = "resul
         )
 
         # === 5. Appliquer la meilleure ===
+        print(f"Step {step}: Applique la meilleure action: {best_macro.name}")
         for a in best_macro.actions:
             if not a.is_applicable(state):
                 raise ValueError(f"Action non applicable : {a}")
