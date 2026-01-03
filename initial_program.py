@@ -1195,7 +1195,7 @@ def run_greedy_planning(initial_state: State, output_path: str = "result.json"):
 
 if __name__ == "__main__":
     # path where you uploaded your JSON
-    path = "problem_103_s145_j266_r20_oc21_f173.json"
+    path = "problem_143_s185_j5_r2_oc28_f3.json"
     s = load_instance_from_json(path)
     print("Loaded state:")
     print("Current beluga:", s.current_beluga)
