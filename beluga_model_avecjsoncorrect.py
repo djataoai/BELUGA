@@ -60,7 +60,13 @@ class Flight:
 
 
 # ---------- State representation ----------
-
+def empty_jig(state: State, jig: str) :
+    """
+    Marque une jig comme vide (empty) dans l'état.
+    """
+    ns = state.copy()
+    ns.jig_empty[jig] = True
+    return ns
 @dataclass
 class State:
     # singletons / lists described in the problem statement
@@ -917,13 +923,7 @@ def evaluate_macro_action(state: State, macro_action) -> float:
     score = internal_cost + deliver_bonus
 
     return score
-def empty_jig(state: State, jig: str) :
-    """
-    Marque une jig comme vide (empty) dans l'état.
-    """
-    ns = state.copy()
-    ns.jig_empty[jig] = True
-    return ns
+
 
 def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[Action]:
     """
