@@ -68,7 +68,6 @@ def reconstruct_action(action_dict: Dict[str, Any]) -> Any:
         raise PlanValidationError(f"Paramètre {e} manquant dans le JSON pour l'action {name}")
 
     return None
-
 def evaluate_plan(initial_state: State, plan_actions: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     SIMULATION ET CALCUL DES MÉTRIQUES :
@@ -95,6 +94,19 @@ def evaluate_plan(initial_state: State, plan_actions: List[Dict[str, Any]]) -> D
             current_deliveries = sum(len(d) for d in s.production_line_deliveries.values())
             print(f"Action {i}: {action.name} | Livraisons cumulées: {current_deliveries}")
             actions_executed += 1
+        
+        # Calcul des résultats finaux après exécution de toutes les actions
+        delivered = sum(len(d) for d in s.production_line_deliveries.values())
+        completion_rate = (delivered / total_to_deliver) if total_to_deliver > 0 else 1.0
+        
+
+        # Calcul du combined_score plus pertinent
+        combined_score = (
+            0.6 * completion_rate +                    # Priorité à la livraison
+            0.2 * (1.0 / (1 + actions_executed)) +    # Favorise les plans courts
+            0.2 * (1.0 if is_terminal_state(s) else 0.0)  # Encourage l’état final correct
+        ) * 100
+
             
     except PlanValidationError as e:
         # Si une action échoue, le plan perd sa validité
@@ -106,19 +118,6 @@ def evaluate_plan(initial_state: State, plan_actions: List[Dict[str, Any]]) -> D
             "error": str(e)
         }
 
-    # Calcul des résultats finaux après exécution de toutes les actions
-    delivered = sum(len(d) for d in s.production_line_deliveries.values())
-    completion_rate = (delivered / total_to_deliver) if total_to_deliver > 0 else 1.0
-    
-
-    
-   
-   # Calcul du combined_score plus pertinent
-    combined_score = (
-        0.6 * completion_rate +                    # Priorité à la livraison
-        0.2 * (1.0 / (1 + actions_executed)) +    # Favorise les plans courts
-        0.2 * (1.0 if is_terminal_state(s) else 0.0)  # Encourage l’état final correct
-    ) * 100
 
     return {
         "validity": 1.0,
@@ -128,7 +127,6 @@ def evaluate_plan(initial_state: State, plan_actions: List[Dict[str, Any]]) -> D
         "score": completion_rate * 100,   # ancien score simple
         "combined_score": combined_score  # score amélioré pour OpenEvolve
     }
-
     
 
 
