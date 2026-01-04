@@ -266,6 +266,8 @@ class DeliverToHangar(Action):
         ns.trailer_load[self.trailer] = None
         # put jig in hangar temporarily (if hangar used as transfer)
         ns.hangar_host[self.hangar] = self.jig
+        # mark jig as empty (delivered to production)
+        ns = empty_jig(ns, self.jig)
         # then deliver to production line (append)
         ns.production_line_deliveries.setdefault(self.production_line, []).append(self.jig)
         
@@ -915,8 +917,13 @@ def evaluate_macro_action(state: State, macro_action) -> float:
     score = internal_cost + deliver_bonus
 
     return score
-def empty_jig(state: State, jig: str) -> bool:
-    return state.jig_empty.get(jig, True)
+def empty_jig(state: State, jig: str) :
+    """
+    Marque une jig comme vide (empty) dans l'état.
+    """
+    ns = state.copy()
+    ns.jig_empty[jig] = True
+    return ns
 
 def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[Action]:
     """
