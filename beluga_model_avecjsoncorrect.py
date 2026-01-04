@@ -129,9 +129,20 @@ class LoadBeluga(Action):
     def __post_init__(self):
         self.name = f"load_beluga({self.jig},{self.beluga},{self.trailer})"
 
-    def is_applicable(self, s: State) -> bool:
-        # trailer must carry the jig, beluga must be current_beluga
-        return (s.trailer_load.get(self.trailer) == self.jig) and (s.current_beluga == self.beluga)
+   def is_applicable(self, s: State) -> bool:
+        # Vérification 1 : Le gabarit est-il dans le hangar ?
+        jig_in_hangar = s.hangar_host.get(self.hangar)
+        if jig_in_hangar != self.jig:
+            print(f"[FAILED] GetFromHangar: {self.hangar} contient '{jig_in_hangar}', mais on cherche '{self.jig}'")
+            return False
+            
+        # Vérification 2 : La remorque est-elle libre ?
+        trailer_content = s.trailer_load.get(self.trailer)
+        if trailer_content is not None:
+            print(f"[FAILED] GetFromHangar: La remorque {self.trailer} est déjà occupée par '{trailer_content}'")
+            return False
+
+        return True
 
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
@@ -155,10 +166,20 @@ class UnloadBeluga(Action):
     def __post_init__(self):
         self.name = f"unload_beluga({self.jig},{self.beluga},{self.trailer})"
 
-    def is_applicable(self, s: State) -> bool:
-        # jig must be in beluga_contents and current beluga matches and trailer empty & at beluga
-        return (s.current_beluga == self.beluga) and (self.jig in s.beluga_contents) and (s.trailer_load.get(self.trailer) is None) and (s.trailer_location.get(self.trailer, ("beluga", "beluga_side"))[1] == "beluga_side")
+   def is_applicable(self, s: State) -> bool:
+        # Vérification 1 : Le gabarit est-il dans le hangar ?
+        jig_in_hangar = s.hangar_host.get(self.hangar)
+        if jig_in_hangar != self.jig:
+            print(f"[FAILED] GetFromHangar: {self.hangar} contient '{jig_in_hangar}', mais on cherche '{self.jig}'")
+            return False
+            
+        # Vérification 2 : La remorque est-elle libre ?
+        trailer_content = s.trailer_load.get(self.trailer)
+        if trailer_content is not None:
+            print(f"[FAILED] GetFromHangar: La remorque {self.trailer} est déjà occupée par '{trailer_content}'")
+            return False
 
+        return True
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
             raise ValueError("Action not applicable")
