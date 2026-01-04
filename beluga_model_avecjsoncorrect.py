@@ -128,9 +128,10 @@ class LoadBeluga(Action):
 
     def __post_init__(self):
         self.name = f"load_beluga({self.jig},{self.beluga},{self.trailer})"
+
     def is_applicable(self, s: State) -> bool:
-        # jig must be in beluga_contents and current beluga matches and trailer empty & at beluga
-        return (s.current_beluga == self.beluga) and (self.jig in s.beluga_contents) and (s.trailer_load.get(self.trailer) is None) and (s.trailer_location.get(self.trailer, ("beluga", "beluga_side"))[1] == "beluga_side")
+        # trailer must carry the jig, beluga must be current_beluga
+        return (s.trailer_load.get(self.trailer) == self.jig) and (s.current_beluga == self.beluga)
 
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
@@ -154,20 +155,9 @@ class UnloadBeluga(Action):
     def __post_init__(self):
         self.name = f"unload_beluga({self.jig},{self.beluga},{self.trailer})"
 
-   def is_applicable(self, s: State) -> bool:
-        # Vérification 1 : Le gabarit est-il dans le hangar ?
-        jig_in_hangar = s.hangar_host.get(self.hangar)
-        if jig_in_hangar != self.jig:
-            print(f"[FAILED] GetFromHangar: {self.hangar} contient '{jig_in_hangar}', mais on cherche '{self.jig}'")
-            return False
-            
-        # Vérification 2 : La remorque est-elle libre ?
-        trailer_content = s.trailer_load.get(self.trailer)
-        if trailer_content is not None:
-            print(f"[FAILED] GetFromHangar: La remorque {self.trailer} est déjà occupée par '{trailer_content}'")
-            return False
-
-        return True
+    def is_applicable(self, s: State) -> bool:
+        # jig must be in beluga_contents and current beluga matches and trailer empty & at beluga
+        return (s.current_beluga == self.beluga) and (self.jig in s.beluga_contents) and (s.trailer_load.get(self.trailer) is None) and (s.trailer_location.get(self.trailer, ("beluga", "beluga_side"))[1] == "beluga_side")
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
             raise ValueError("Action not applicable")
@@ -218,7 +208,19 @@ class GetFromHangar(Action):
         self.name = f"get_from_hangar({self.jig},{self.hangar},{self.trailer})"
 
     def is_applicable(self, s: State) -> bool:
-        return (s.hangar_host.get(self.hangar) == self.jig) and (s.trailer_load.get(self.trailer) is None)
+        # Vérification 1 : Le gabarit est-il dans le hangar ?
+        jig_in_hangar = s.hangar_host.get(self.hangar)
+        if jig_in_hangar != self.jig:
+            print(f"[FAILED] GetFromHangar: {self.hangar} contient '{jig_in_hangar}', mais on cherche '{self.jig}'")
+            return False
+            
+        # Vérification 2 : La remorque est-elle libre ?
+        trailer_content = s.trailer_load.get(self.trailer)
+        if trailer_content is not None:
+            print(f"[FAILED] GetFromHangar: La remorque {self.trailer} est déjà occupée par '{trailer_content}'")
+            return False
+
+        return True
 
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
@@ -243,8 +245,19 @@ class DeliverToHangar(Action):
         self.name = f"deliver_to_hangar({self.jig},{self.hangar},{self.trailer},{self.production_line})"
 
     def is_applicable(self, s: State) -> bool:
-        return (s.trailer_load.get(self.trailer) == self.jig) and (s.hangar_host.get(self.hangar) in (None, self.jig))
+        # Vérification 1 : La remorque transporte-t-elle le bon gabarit ?
+        trailer_content = s.trailer_load.get(self.trailer)
+        if trailer_content != self.jig:
+            print(f"[FAILED] DeliverToHangar: La remorque {self.trailer} porte '{trailer_content}', attendu: '{self.jig}'")
+            return False
 
+        # Vérification 2 : Le hangar est-il libre ou contient-il déjà le même objet ?
+        hangar_content = s.hangar_host.get(self.hangar)
+        if hangar_content not in (None, self.jig):
+            print(f"[FAILED] DeliverToHangar: Le hangar {self.hangar} est occupé par '{hangar_content}'")
+            return False
+
+        return True
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
             raise ValueError("Action not applicable")
