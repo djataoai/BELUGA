@@ -1,10 +1,10 @@
-from .planner_api import DeterministicPlannerAPI
-from .planner_api import ProbabilisticPlannerAPI, ProbabilisticPlanningMetatada
-from .planner_api import BelugaAction, BelugaPlan
-from .planner_api import LoadBeluga, UnloadBeluga
-from .planner_api import PutDownRack, PickUpRack
-from .planner_api import DeliverToHangar, GetFromHangar
-from .planner_api import SwitchToNextBeluga
+from planner_api import DeterministicPlannerAPI
+from planner_api import ProbabilisticPlannerAPI, ProbabilisticPlanningMetatada
+from planner_api import BelugaAction, BelugaPlan
+from planner_api import LoadBeluga, UnloadBeluga
+from planner_api import PutDownRack, PickUpRack
+from planner_api import DeliverToHangar, GetFromHangar
+from planner_api import SwitchToNextBeluga
 from encoder.pddl_encoding.variant import Variant
 from beluga_lib.beluga_problem import BelugaProblem
 from beluga_lib.problem_state import BelugaProblemState

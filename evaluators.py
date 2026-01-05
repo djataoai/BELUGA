@@ -2,17 +2,17 @@ from beluga_lib.beluga_problem import BelugaProblem
 from skd_domains.skd_base_domain import SkdBaseDomain
 from skd_domains.skd_pddl_domain import SkdPDDLDomain
 from skd_domains.skd_spddl_domain import SkdSPDDLDomain
-from .planner_api import ProbabilisticPlannerAPI, ProbabilisticPlanningMetatada
-from .planner_api import DeterministicPlannerAPI
-from .planner_api import BelugaAction, BelugaPlan
+from planner_api import ProbabilisticPlannerAPI, ProbabilisticPlanningMetatada
+from planner_api import DeterministicPlannerAPI
+from planner_api import BelugaAction, BelugaPlan
 from skd_domains.skd_base_domain import State
 import json
 from beluga_lib.problem_state import BelugaProblemState
 import time
-from .planner_api import LoadBeluga, UnloadBeluga
-from .planner_api import PutDownRack, PickUpRack
-from .planner_api import DeliverToHangar, GetFromHangar
-from .planner_api import SwitchToNextBeluga
+from planner_api import LoadBeluga, UnloadBeluga
+from planner_api import PutDownRack, PickUpRack
+from planner_api import DeliverToHangar, GetFromHangar
+from planner_api import SwitchToNextBeluga
 import os
 import numpy as np
 

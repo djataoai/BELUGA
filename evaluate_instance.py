@@ -8,7 +8,8 @@ import sys
 
 from beluga_lib.beluga_problem import BelugaProblemDecoder
 import generate_instance as bgi
-from evaluation.evaluators import ProbabilisticEvaluator, DeterministicEvaluator
+import evaluators
+from evaluators import ProbabilisticEvaluator, DeterministicEvaluator
 from evaluation.planner_examples import RandomProbabilisticPlanner, RandomDeterministicPlanner
 from evaluation.planner_examples import FixedPlanDeterministicPlanner
 from evaluation.planner_examples import LazyAstarDeterministicPlanner, LazyAstarProbabilisticPlanner
