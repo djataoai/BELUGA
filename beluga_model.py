@@ -1212,7 +1212,7 @@ if __name__ == "__main__":
     print("Beluga contents (edge last):", s.beluga_contents)
     print("Trailers:", {t: s.trailer_load[t] for t in s.trailer_load})
     # run greedy planning until terminal
-    history = run_greedy_planning(s, output_path="result.json")
+    history = run_greedy_planning(s, output_path="resultsimple.json")
     print("Planning history:")
     for step_info in history:
         print(step_info)

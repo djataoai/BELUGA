@@ -447,7 +447,7 @@ def load_instance_from_json(path: str) -> State:
     return s
 
 if __name__ == "__main__":
-    path = "/home/aichatou/belugaModel/BELUGA/problem_143_s185_j5_r2_oc28_f3.json"
+    path = "problem_150_s192_j108_r14_oc50_f72.json"
     s = load_instance_from_json(path)
-    run_greedy_with_backtracking(s, output_path="result.json")
+    run_greedy_with_backtracking(s, output_path="result150.json")
     print("Plan généré avec succès dans result.json")
