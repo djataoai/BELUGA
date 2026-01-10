@@ -3,6 +3,10 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Tuple
 import json
 import copy
+import os
+import json
+from pathlib import Path
+from tqdm import tqdm
 
 # ---------- Basic domain classes ----------
 
@@ -117,7 +121,8 @@ class RegisterOutgoingJig(Action):
     jig: str
     trailer: str
     beluga: Optional[str] = None
-    def is_applicable(self, s: State) -> bool: return s.trailer_load.get(self.trailer) == self.jig
+    def is_applicable(self, s: State) -> bool: 
+        return s.trailer_load.get(self.trailer) == self.jig and (s.current_beluga == self.beluga)
     def apply(self, s: State) -> State:
         ns = s.copy()
         ns.trailer_load[self.trailer] = None
@@ -156,6 +161,7 @@ class DeliverToHangar(Action):
         ns.jig_empty[self.jig] = True
         ns.production_line_deliveries.setdefault(self.production_line, []).append(self.jig)
         return ns
+    
 
 @dataclass
 class PutDownRack(Action):
@@ -203,18 +209,41 @@ class SwitchToNextBeluga(Action):
         ns.beluga_contents = list(ns.flights[self.next_beluga].incoming)
         return ns
 
+# @dataclass
+# class MacroAction(Action):
+#     actions: List[Action]
+#     internal_action_count: int
+#     swap_penalty: float = 0.0
+#     name: str = ""
+#     def is_applicable(self, s: State) -> bool: return all(a.is_applicable(s) for a in self.actions)
+#     def apply(self, s: State) -> State:
+#         ns = s
+#         for a in self.actions: ns = a.apply(ns)
+#         return ns
+
 @dataclass
 class MacroAction(Action):
     actions: List[Action]
     internal_action_count: int
     swap_penalty: float = 0.0
     name: str = ""
-    def is_applicable(self, s: State) -> bool: return all(a.is_applicable(s) for a in self.actions)
-    def apply(self, s: State) -> State:
-        ns = s
-        for a in self.actions: ns = a.apply(ns)
-        return ns
 
+    def is_applicable(self, s: State) -> bool:
+        temp_s = s
+        for a in self.actions:
+            if not a.is_applicable(temp_s):
+                return False
+            # On simule l'état après cette sous-action pour vérifier la suivante
+            temp_s = a.apply(temp_s)
+        return True
+
+    def apply(self, s: State) -> State:
+        # On ne fait qu'une seule copie au début, puis les actions atomiques
+        # s'occupent de créer les nouveaux états.
+        ns = s
+        for a in self.actions:
+            ns = a.apply(ns)
+        return ns
 # ---------- Helpers & Logic ----------
 
 def action_to_evaluator_dict(action: Action) -> dict:
@@ -324,6 +353,8 @@ def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[A
 
 # ---------- Main Planning Engine ----------
 
+
+
 def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tuple[MacroAction, float]]:
     actions = []
     # 1. Switch
@@ -393,29 +424,75 @@ def is_terminal_state(state: State) -> bool:
     is_last = state.current_beluga == all_b[-1] if all_b else False
     return prod_done and not state.beluga_contents and not state.remaining_outgoing and is_last
 
+# def run_greedy_with_backtracking(initial_state: State, output_path: str = "result.json", max_backtrack: int = 5):
+#     stack, state, history, step = [], initial_state, [], 0
+#     while not is_terminal_state(state):
+#         urgency = compute_urgency(state)
+#         actions = generate_possible_actions(state, urgency)
+#         if not actions:
+#             if not stack: break
+#             node = stack.pop()
+#             state, history = node.state, node.history
+#             if not node.remaining_actions: continue
+#             best = node.remaining_actions.pop(0)
+#         else:
+#             actions.sort(key=lambda x: x[1])
+#             best = actions[0][0]
+#             stack.append(SearchNode(state.copy(), [a for a, s in actions[1:max_backtrack]], history.copy()))
+        
+#         for a in best.actions:
+#             state = a.apply(state)
+#             history.append(action_to_evaluator_dict(a))
+#         step += 1
+#         if step > 2000: break
+
+#     with open(output_path, "w") as f: json.dump(history, f, indent=2)
+#     return history
+
 def run_greedy_with_backtracking(initial_state: State, output_path: str = "result.json", max_backtrack: int = 5):
-    stack, state, history, step = [], initial_state, [], 0
+    stack = []
+    state = initial_state
+    history = []
+    step = 0
+    
     while not is_terminal_state(state):
         urgency = compute_urgency(state)
-        actions = generate_possible_actions(state, urgency)
-        if not actions:
-            if not stack: break
+        raw_actions = generate_possible_actions(state, urgency)
+        
+        # FILTRE : On ne garde que ce qui est réellement APPLICABLE maintenant
+        valid_actions = [(a, s) for a, s in raw_actions if a.is_applicable(state)]
+
+        if not valid_actions:
+            if not stack:
+                # Plus aucune solution, on arrête proprement
+                break
+            # BACKTRACK
             node = stack.pop()
             state, history = node.state, node.history
-            if not node.remaining_actions: continue
+            if not node.remaining_actions:
+                continue
             best = node.remaining_actions.pop(0)
         else:
-            actions.sort(key=lambda x: x[1])
-            best = actions[0][0]
-            stack.append(SearchNode(state.copy(), [a for a, s in actions[1:max_backtrack]], history.copy()))
+            # Tri par score
+            valid_actions.sort(key=lambda x: x[1])
+            best = valid_actions[0][0]
+            
+            # Sauvegarde des alternatives
+            if len(valid_actions) > 1:
+                alts = [a for a, s in valid_actions[1:max_backtrack]]
+                stack.append(SearchNode(state.copy(), alts, list(history)))
         
+        # Application et mise à jour de l'historique
+        # Note: best.apply(state) crée déjà des copies via les actions atomiques
         for a in best.actions:
             state = a.apply(state)
             history.append(action_to_evaluator_dict(a))
+            
         step += 1
-        if step > 2000: break
+        if step > 3000: break # Sécurité augmentée
 
-    with open(output_path, "w") as f: json.dump(history, f, indent=2)
+    with open(output_path, "w") as f:
+        json.dump(history, f, indent=2)
     return history
 
 def load_instance_from_json(path: str) -> State:
@@ -447,7 +524,61 @@ def load_instance_from_json(path: str) -> State:
     return s
 
 if __name__ == "__main__":
-    path = "problem_150_s192_j108_r14_oc50_f72.json"
-    s = load_instance_from_json(path)
-    run_greedy_with_backtracking(s, output_path="result150.json")
-    print("Plan généré avec succès dans result.json")
+    # 1. Configuration des dossiers
+    input_dir = Path("instances")
+    output_dir = Path("resultats")
+
+    # 2. Création du dossier de sortie
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 3. Récupération de la liste des fichiers
+    instances_files = list(input_dir.glob("*.json"))
+
+    if not instances_files:
+        print(f"[-] Aucun fichier JSON trouvé dans le dossier '{input_dir}'")
+    else:
+        # 4. Initialisation de la barre de progression
+        # desc: texte affiché à gauche, unit: l'unité de mesure
+        for file_path in tqdm(instances_files, desc="Traitement des instances", unit="file"):
+            
+            output_file_path = output_dir / f"res_{file_path.name}"
+
+            try:
+                # Chargement
+                s = load_instance_from_json(file_path)
+                
+                # Exécution
+                run_greedy_with_backtracking(s, output_path=str(output_file_path))
+                
+            except Exception as e:
+                # tqdm.write permet d'afficher des messages sans casser la barre
+                tqdm.write(f"[Erreur] Sur le fichier {file_path.name} : {e}")
+
+        print("\n" + "="*30)
+        print("Opération terminée.")
+        print("="*30)
+
+# from pathlib import Path
+
+# if __name__ == "__main__":
+#     # Fichier d'entrée (une seule instance)
+#     input_file = Path("/home/aichatou/ProjetBeluga/belugaModel/instances/problem_2_s50326_j418_r20_oc53_f167.json")
+    
+#     # Dossier de sortie
+#     output_dir = Path("resultats")
+#     output_dir.mkdir(parents=True, exist_ok=True)
+    
+#     # Fichier de sortie
+#     output_file = output_dir / f"res_{input_file.name}"
+
+#     try:
+#         # Chargement de l'instance
+#         s = load_instance_from_json(input_file)
+        
+#         # Exécution de l'algorithme
+#         run_greedy_with_backtracking(s, output_path=str(output_file))
+        
+#         print("[OK] Instance traitée avec succès.")
+    
+#     except Exception as e:
+#         print(f"[Erreur] {e}")

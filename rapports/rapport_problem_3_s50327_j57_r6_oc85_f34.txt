@@ -1,0 +1,424 @@
+=== STDOUT ===
+{
+    "plan_construction_time": 0.0006744861602783203,
+    "error_msg": null,
+    "plan": [
+        {
+            "name": "pick_up_rack",
+            "j": "jig0004",
+            "t": "beluga_trailer_1",
+            "r": "rack01",
+            "s": "bside"
+        },
+        {
+            "name": "load_beluga",
+            "j": "jig0004",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0016",
+            "t": "factory_trailer_1",
+            "r": "rack00",
+            "s": "fside"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0016",
+            "t": "factory_trailer_1",
+            "r": "rack01",
+            "s": "fside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0015",
+            "t": "factory_trailer_1",
+            "r": "rack00",
+            "s": "fside"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0015",
+            "t": "factory_trailer_1",
+            "r": "rack04",
+            "s": "fside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0006",
+            "t": "factory_trailer_1",
+            "r": "rack00",
+            "s": "fside"
+        },
+        {
+            "name": "deliver_to_hangar",
+            "j": "jig0006",
+            "h": "hangar1",
+            "t": "factory_trailer_1",
+            "pl": "pl1"
+        },
+        {
+            "name": "get_from_hangar",
+            "j": "jig0006",
+            "h": "hangar1",
+            "t": "factory_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0006",
+            "t": "factory_trailer_1",
+            "r": "rack00",
+            "s": "fside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0016",
+            "t": "factory_trailer_1",
+            "r": "rack01",
+            "s": "fside"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0016",
+            "t": "factory_trailer_1",
+            "r": "rack00",
+            "s": "fside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0012",
+            "t": "factory_trailer_1",
+            "r": "rack01",
+            "s": "fside"
+        },
+        {
+            "name": "deliver_to_hangar",
+            "j": "jig0012",
+            "h": "hangar1",
+            "t": "factory_trailer_1",
+            "pl": "pl1"
+        },
+        {
+            "name": "get_from_hangar",
+            "j": "jig0012",
+            "h": "hangar1",
+            "t": "factory_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0012",
+            "t": "factory_trailer_1",
+            "r": "rack01",
+            "s": "fside"
+        },
+        {
+            "name": "switch_to_next_beluga"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0011",
+            "t": "beluga_trailer_1",
+            "r": "rack03",
+            "s": "bside"
+        },
+        {
+            "name": "load_beluga",
+            "j": "jig0011",
+            "b": "beluga2",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0008",
+            "t": "beluga_trailer_1",
+            "r": "rack03",
+            "s": "bside"
+        },
+        {
+            "name": "load_beluga",
+            "j": "jig0008",
+            "b": "beluga2",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0003",
+            "t": "beluga_trailer_1",
+            "r": "rack02",
+            "s": "bside"
+        },
+        {
+            "name": "load_beluga",
+            "j": "jig0003",
+            "b": "beluga2",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0013",
+            "t": "factory_trailer_1",
+            "r": "rack02",
+            "s": "fside"
+        },
+        {
+            "name": "deliver_to_hangar",
+            "j": "jig0013",
+            "h": "hangar1",
+            "t": "factory_trailer_1",
+            "pl": "pl0"
+        },
+        {
+            "name": "get_from_hangar",
+            "j": "jig0013",
+            "h": "hangar1",
+            "t": "factory_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0013",
+            "t": "factory_trailer_1",
+            "r": "rack04",
+            "s": "fside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0009",
+            "t": "factory_trailer_1",
+            "r": "rack02",
+            "s": "fside"
+        },
+        {
+            "name": "deliver_to_hangar",
+            "j": "jig0009",
+            "h": "hangar1",
+            "t": "factory_trailer_1",
+            "pl": "pl0"
+        },
+        {
+            "name": "get_from_hangar",
+            "j": "jig0009",
+            "h": "hangar1",
+            "t": "factory_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0009",
+            "t": "factory_trailer_1",
+            "r": "rack02",
+            "s": "fside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0016",
+            "t": "factory_trailer_1",
+            "r": "rack00",
+            "s": "fside"
+        },
+        {
+            "name": "deliver_to_hangar",
+            "j": "jig0016",
+            "h": "hangar1",
+            "t": "factory_trailer_1",
+            "pl": "pl0"
+        },
+        {
+            "name": "get_from_hangar",
+            "j": "jig0016",
+            "h": "hangar1",
+            "t": "factory_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0016",
+            "t": "factory_trailer_1",
+            "r": "rack03",
+            "s": "fside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0007",
+            "t": "factory_trailer_1",
+            "r": "rack05",
+            "s": "fside"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0007",
+            "t": "factory_trailer_1",
+            "r": "rack01",
+            "s": "fside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0005",
+            "t": "factory_trailer_1",
+            "r": "rack05",
+            "s": "fside"
+        },
+        {
+            "name": "deliver_to_hangar",
+            "j": "jig0005",
+            "h": "hangar1",
+            "t": "factory_trailer_1",
+            "pl": "pl0"
+        },
+        {
+            "name": "get_from_hangar",
+            "j": "jig0005",
+            "h": "hangar1",
+            "t": "factory_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0005",
+            "t": "factory_trailer_1",
+            "r": "rack05",
+            "s": "fside"
+        }
+    ],
+    "final_state": {
+        "current_beluga": "beluga2",
+        "last_belugas": [
+            "beluga1",
+            "beluga2"
+        ],
+        "beluga_contents": [
+            "jig0008",
+            "jig0011",
+            "jig0003",
+            "jig0017"
+        ],
+        "production_line_deliveries": {
+            "pl0": [
+                "jig0013",
+                "jig0009",
+                "jig0016",
+                "jig0005"
+            ],
+            "pl1": [
+                "jig0006",
+                "jig0012"
+            ]
+        },
+        "rack_contents": {
+            "rack00": [
+                "jig0006"
+            ],
+            "rack01": [
+                "jig0012",
+                "jig0007"
+            ],
+            "rack02": [
+                "jig0009"
+            ],
+            "rack03": [
+                "jig0001",
+                "jig0016"
+            ],
+            "rack04": [
+                "jig0014",
+                "jig0010",
+                "jig0002",
+                "jig0015",
+                "jig0013"
+            ],
+            "rack05": [
+                "jig0005"
+            ]
+        },
+        "trailer_load": {
+            "beluga_trailer_1": null,
+            "factory_trailer_1": null,
+            "factory_trailer_2": null
+        },
+        "jig_empty": {
+            "jig0001": false,
+            "jig0002": true,
+            "jig0003": true,
+            "jig0004": true,
+            "jig0005": true,
+            "jig0006": true,
+            "jig0007": false,
+            "jig0008": true,
+            "jig0009": true,
+            "jig0010": true,
+            "jig0011": true,
+            "jig0012": true,
+            "jig0013": true,
+            "jig0014": true,
+            "jig0015": false,
+            "jig0016": true,
+            "jig0017": false,
+            "jig0018": false,
+            "jig0019": false,
+            "jig0020": false,
+            "jig0021": false,
+            "jig0022": false,
+            "jig0023": false,
+            "jig0024": false,
+            "jig0025": false,
+            "jig0026": false,
+            "jig0027": false,
+            "jig0028": false,
+            "jig0029": false,
+            "jig0030": false,
+            "jig0031": false,
+            "jig0032": false,
+            "jig0033": false,
+            "jig0034": false,
+            "jig0035": false,
+            "jig0036": false,
+            "jig0037": false,
+            "jig0038": false,
+            "jig0039": false,
+            "jig0040": false,
+            "jig0041": false,
+            "jig0042": false,
+            "jig0043": false,
+            "jig0044": false,
+            "jig0045": false,
+            "jig0046": false,
+            "jig0047": false,
+            "jig0048": false,
+            "jig0049": false,
+            "jig0050": false,
+            "jig0051": false,
+            "jig0052": false,
+            "jig0053": false,
+            "jig0054": false,
+            "jig0055": false,
+            "jig0056": false,
+            "jig0057": false
+        },
+        "trailer_location": {
+            "beluga_trailer_1": [
+                "beluga",
+                null
+            ],
+            "factory_trailer_1": [
+                "rack05",
+                "fside"
+            ],
+            "factory_trailer_2": [
+                "hangar",
+                null
+            ]
+        },
+        "hangar_host": {
+            "hangar1": null,
+            "hangar2": null
+        }
+    },
+    "final_step": 41,
+    "goal_reached": false,
+    "abrupt_plan_end": true,
+    "invalid_plan": false,
+    "time_limit_reached": false,
+    "step_limit_reached": false,
+    "free_racks": 0,
+    "score": {
+        "goal_reached": false,
+        "nb_actions": 41
+    }
+}
