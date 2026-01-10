@@ -582,5 +582,3 @@ if __name__ == "__main__":
     
 #     except Exception as e:
 #         print(f"[Erreur] {e}")
-
->>>>>>> b0c7fe329f7e12179cc3eb4afb13f5df286c2eb3
