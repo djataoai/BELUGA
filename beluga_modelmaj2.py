@@ -60,7 +60,13 @@ class Flight:
 
 
 # ---------- State representation ----------
-
+def empty_jig(state: State, jig: str) :
+    """
+    Marque une jig comme vide (empty) dans l'état.
+    """
+    ns = state.copy()
+    ns.jig_empty[jig] = True
+    return ns
 @dataclass
 class State:
     # singletons / lists described in the problem statement
@@ -266,6 +272,8 @@ class DeliverToHangar(Action):
         ns.trailer_load[self.trailer] = None
         # put jig in hangar temporarily (if hangar used as transfer)
         ns.hangar_host[self.hangar] = self.jig
+        # mark jig as empty (delivered to production)
+        ns = empty_jig(ns, self.jig)
         # then deliver to production line (append)
         ns.production_line_deliveries.setdefault(self.production_line, []).append(self.jig)
         
@@ -368,79 +376,106 @@ class SwitchToNextBeluga(Action):
 
 # ---------- Loader from JSON ----------
 
+# def load_instance_from_json(path: str) -> State:
+#     with open(path, "r") as f:
+#         data = json.load(f)
+
+#     s = State()
+
+#     # jig types
+#     for k, v in data.get("jig_types", {}).items():
+#         s.jig_types[k] = JigType(name=v["name"],
+#                                  size_empty=v["size_empty"],
+#                                  size_loaded=v["size_loaded"])
+
+#     # jigs
+#     for jname, jdef in data.get("jigs", {}).items():
+#         s.jigs[jname] = Jig(name=jdef["name"], type=jdef["type"], empty=jdef["empty"])
+#         s.jig_empty[jname] = jdef["empty"]
+
+#     # racks
+#     for r in data.get("racks", []):
+#         rack = Rack(name=r["name"], size=r["size"], jigs=list(r.get("jigs", [])))
+#         s.racks[rack.name] = rack
+#         s.rack_contents[rack.name] = list(rack.jigs)
+
+
+#     # trailers beluga
+#     for t in data.get("trailers_beluga", []):
+#         trailer = Trailer(
+#             name=t["name"],
+#             side="beluga_side",
+#             location="beluga"
+#         )
+#         s.trailers[trailer.name] = trailer
+#         s.trailer_load[trailer.name] = trailer.load
+#         s.trailer_location[trailer.name] = (trailer.location, trailer.side)
+
+#     # trailers factory
+#     for t in data.get("trailers_factory", []):
+#         trailer = Trailer(
+#             name=t["name"],
+#             side="factory_side",
+#             location="factory"
+#         )
+#         s.trailers[trailer.name] = trailer
+#         s.trailer_load[trailer.name] = trailer.load
+#         s.trailer_location[trailer.name] = (trailer.location, trailer.side)
+
+
+#     # hangars
+#     for h in data.get("hangars", []):
+#         hangar = Hangar(name=h, host=None)
+#         s.hangars[h] = hangar
+#         s.hangar_host[h] = None
+
+#     # production lines
+#     for pl in data.get("production_lines", []):
+#         p = ProductionLine(name=pl["name"], schedule=list(pl.get("schedule", [])))
+#         s.production_lines[p.name] = p
+#         s.production_line_deliveries[p.name] = []
+
+#     # flights
+#     for fdef in data.get("flights", []):
+#         f = Flight(name=fdef["name"], incoming=list(fdef.get("incoming", [])), outgoing=list(fdef.get("outgoing", [])))
+#         s.flights[f.name] = f
+
+#     # set a default current_beluga (first in list) if exists
+#     flights_list = list(s.flights.keys())
+#     s.current_beluga = flights_list[0] if flights_list else None
+#     s.remaining_outgoing= list(s.flights[s.current_beluga].outgoing) if s.current_beluga else []
+#     if s.current_beluga:
+#         s.beluga_contents = list(s.flights[s.current_beluga].incoming)
+
+#     return s
+
 def load_instance_from_json(path: str) -> State:
-    with open(path, "r") as f:
-        data = json.load(f)
-
+    with open(path, "r") as f: data = json.load(f)
     s = State()
-
-    # jig types
-    for k, v in data.get("jig_types", {}).items():
-        s.jig_types[k] = JigType(name=v["name"],
-                                 size_empty=v["size_empty"],
-                                 size_loaded=v["size_loaded"])
-
-    # jigs
-    for jname, jdef in data.get("jigs", {}).items():
-        s.jigs[jname] = Jig(name=jdef["name"], type=jdef["type"], empty=jdef["empty"])
-        s.jig_empty[jname] = jdef["empty"]
-
-    # racks
+    for k, v in data.get("jig_types", {}).items(): s.jig_types[k] = JigType(v["name"], v["size_empty"], v["size_loaded"])
+    for jn, jd in data.get("jigs", {}).items():
+        s.jigs[jn] = Jig(jn, jd["type"], jd["empty"])
+        s.jig_empty[jn] = jd["empty"]
     for r in data.get("racks", []):
-        rack = Rack(name=r["name"], size=r["size"], jigs=list(r.get("jigs", [])))
-        s.racks[rack.name] = rack
-        s.rack_contents[rack.name] = list(rack.jigs)
-
-
-    # trailers beluga
+        s.racks[r["name"]] = Rack(r["name"], r["size"], list(r.get("jigs", [])))
+        s.rack_contents[r["name"]] = list(r.get("jigs", []))
     for t in data.get("trailers_beluga", []):
-        trailer = Trailer(
-            name=t["name"],
-            side="beluga_side",
-            location="beluga"
-        )
-        s.trailers[trailer.name] = trailer
-        s.trailer_load[trailer.name] = trailer.load
-        s.trailer_location[trailer.name] = (trailer.location, trailer.side)
-
-    # trailers factory
+        s.trailer_location[t["name"]] = ("beluga", "bside")
+        s.trailer_load[t["name"]] = None
     for t in data.get("trailers_factory", []):
-        trailer = Trailer(
-            name=t["name"],
-            side="factory_side",
-            location="factory"
-        )
-        s.trailers[trailer.name] = trailer
-        s.trailer_load[trailer.name] = trailer.load
-        s.trailer_location[trailer.name] = (trailer.location, trailer.side)
-
-
-    # hangars
-    for h in data.get("hangars", []):
-        hangar = Hangar(name=h, host=None)
-        s.hangars[h] = hangar
-        s.hangar_host[h] = None
-
-    # production lines
+        s.trailer_location[t["name"]] = ("factory", "fside")
+        s.trailer_load[t["name"]] = None
+    for h in data.get("hangars", []): s.hangar_host[h] = None
     for pl in data.get("production_lines", []):
-        p = ProductionLine(name=pl["name"], schedule=list(pl.get("schedule", [])))
-        s.production_lines[p.name] = p
-        s.production_line_deliveries[p.name] = []
-
-    # flights
-    for fdef in data.get("flights", []):
-        f = Flight(name=fdef["name"], incoming=list(fdef.get("incoming", [])), outgoing=list(fdef.get("outgoing", [])))
-        s.flights[f.name] = f
-
-    # set a default current_beluga (first in list) if exists
-    flights_list = list(s.flights.keys())
-    s.current_beluga = flights_list[0] if flights_list else None
-    s.remaining_outgoing= list(s.flights[s.current_beluga].outgoing) if s.current_beluga else []
-    if s.current_beluga:
-        s.beluga_contents = list(s.flights[s.current_beluga].incoming)
-
+        s.production_lines[pl["name"]] = ProductionLine(pl["name"], list(pl.get("schedule", [])))
+        s.production_line_deliveries[pl["name"]] = []
+    for f in data.get("flights", []): s.flights[f["name"]] = Flight(f["name"], list(f.get("incoming", [])), list(f.get("outgoing", [])))
+    first_f = list(s.flights.keys())[0] if s.flights else None
+    s.current_beluga = first_f
+    if first_f:
+        s.remaining_outgoing = list(s.flights[first_f].outgoing)
+        s.beluga_contents = list(s.flights[first_f].incoming)
     return s
-
 
 # ---------- Example heuristic stub (greedy constructive) ----------
 def compute_urgency(state: State) -> Dict[str, int]:
@@ -915,8 +950,7 @@ def evaluate_macro_action(state: State, macro_action) -> float:
     score = internal_cost + deliver_bonus
 
     return score
-def empty_jig(state: State, jig: str) -> bool:
-    return state.jig_empty.get(jig, True)
+
 
 def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[Action]:
     """
@@ -1346,9 +1380,9 @@ def run_greedy_with_backtracking(initial_state: State, output_path: str = "resul
 # ---------- Main example usage ----------
 
 if __name__ == "__main__":
-    #path where you uploaded your JSON
-    #path = "problem_143_s185_j5_r2_oc28_f3.json"
-    path= "problem_103_s145_j266_r20_oc21_f173.json"
+    # path where you uploaded your JSON
+    path = "problem_143_s185_j5_r2_oc28_f3.json"
+    #path= "problem_103_s145_j266_r20_oc21_f173.json"
     s = load_instance_from_json(path)
     print("Loaded state:")
     print("Current beluga:", s.current_beluga)
