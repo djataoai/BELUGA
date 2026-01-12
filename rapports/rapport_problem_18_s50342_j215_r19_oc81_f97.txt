@@ -1,0 +1,466 @@
+=== STDOUT ===
+{
+    "plan_construction_time": 0.00012087821960449219,
+    "error_msg": "No matching applicable action found for {\"name\": \"unload_beluga\", \"j\": \"jig0039\", \"b\": \"beluga1\", \"t\": \"beluga_trailer_1\"}",
+    "plan": [
+        {
+            "name": "pick_up_rack",
+            "j": "jig0032",
+            "t": "beluga_trailer_1",
+            "r": "rack01",
+            "s": "bside"
+        },
+        {
+            "name": "load_beluga",
+            "j": "jig0032",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0034",
+            "t": "beluga_trailer_1",
+            "r": "rack08",
+            "s": "bside"
+        },
+        {
+            "name": "load_beluga",
+            "j": "jig0034",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0009",
+            "t": "beluga_trailer_1",
+            "r": "rack15",
+            "s": "bside"
+        },
+        {
+            "name": "load_beluga",
+            "j": "jig0009",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0035",
+            "t": "beluga_trailer_1",
+            "r": "rack17",
+            "s": "bside"
+        },
+        {
+            "name": "load_beluga",
+            "j": "jig0035",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0020",
+            "t": "beluga_trailer_1",
+            "r": "rack02",
+            "s": "bside"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0020",
+            "t": "beluga_trailer_1",
+            "r": "rack07",
+            "s": "bside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0010",
+            "t": "beluga_trailer_1",
+            "r": "rack02",
+            "s": "bside"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0010",
+            "t": "beluga_trailer_1",
+            "r": "rack18",
+            "s": "bside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0005",
+            "t": "beluga_trailer_1",
+            "r": "rack02",
+            "s": "bside"
+        },
+        {
+            "name": "load_beluga",
+            "j": "jig0005",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0039",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0039",
+            "t": "beluga_trailer_1",
+            "r": "rack02",
+            "s": "bside"
+        }
+    ],
+    "final_state": {
+        "current_beluga": "beluga1",
+        "last_belugas": [
+            "beluga1"
+        ],
+        "beluga_contents": [
+            "jig0032",
+            "jig0038",
+            "jig0005",
+            "jig0034",
+            "jig0039",
+            "jig0035",
+            "jig0009"
+        ],
+        "production_line_deliveries": {
+            "pl0": [],
+            "pl1": []
+        },
+        "rack_contents": {
+            "rack00": [
+                "jig0018",
+                "jig0003"
+            ],
+            "rack01": [
+                "jig0015"
+            ],
+            "rack02": [
+                "jig0028"
+            ],
+            "rack03": [
+                "jig0012",
+                "jig0025"
+            ],
+            "rack04": [
+                "jig0016",
+                "jig0002",
+                "jig0031"
+            ],
+            "rack05": [
+                "jig0013",
+                "jig0029",
+                "jig0030"
+            ],
+            "rack06": [
+                "jig0011",
+                "jig0004"
+            ],
+            "rack07": [
+                "jig0020",
+                "jig0027"
+            ],
+            "rack08": [
+                "jig0008"
+            ],
+            "rack09": [
+                "jig0037",
+                "jig0026",
+                "jig0024"
+            ],
+            "rack10": [
+                "jig0022"
+            ],
+            "rack11": [
+                "jig0007",
+                "jig0033"
+            ],
+            "rack12": [
+                "jig0001"
+            ],
+            "rack13": [
+                "jig0014"
+            ],
+            "rack14": [
+                "jig0023"
+            ],
+            "rack15": [
+                "jig0017"
+            ],
+            "rack16": [
+                "jig0021"
+            ],
+            "rack17": [
+                "jig0006",
+                "jig0036"
+            ],
+            "rack18": [
+                "jig0010",
+                "jig0019"
+            ]
+        },
+        "trailer_load": {
+            "beluga_trailer_1": null,
+            "beluga_trailer_2": null,
+            "factory_trailer_1": null,
+            "factory_trailer_2": null,
+            "factory_trailer_3": null
+        },
+        "jig_empty": {
+            "jig0001": true,
+            "jig0002": true,
+            "jig0003": false,
+            "jig0004": false,
+            "jig0005": true,
+            "jig0006": true,
+            "jig0007": true,
+            "jig0008": true,
+            "jig0009": true,
+            "jig0010": true,
+            "jig0011": true,
+            "jig0012": true,
+            "jig0013": false,
+            "jig0014": false,
+            "jig0015": true,
+            "jig0016": true,
+            "jig0017": false,
+            "jig0018": true,
+            "jig0019": false,
+            "jig0020": true,
+            "jig0021": true,
+            "jig0022": true,
+            "jig0023": false,
+            "jig0024": false,
+            "jig0025": false,
+            "jig0026": true,
+            "jig0027": false,
+            "jig0028": false,
+            "jig0029": false,
+            "jig0030": false,
+            "jig0031": false,
+            "jig0032": true,
+            "jig0033": false,
+            "jig0034": true,
+            "jig0035": true,
+            "jig0036": false,
+            "jig0037": true,
+            "jig0038": false,
+            "jig0039": false,
+            "jig0040": false,
+            "jig0041": false,
+            "jig0042": false,
+            "jig0043": false,
+            "jig0044": false,
+            "jig0045": false,
+            "jig0046": false,
+            "jig0047": false,
+            "jig0048": false,
+            "jig0049": false,
+            "jig0050": false,
+            "jig0051": false,
+            "jig0052": false,
+            "jig0053": false,
+            "jig0054": false,
+            "jig0055": false,
+            "jig0056": false,
+            "jig0057": false,
+            "jig0058": false,
+            "jig0059": false,
+            "jig0060": false,
+            "jig0061": false,
+            "jig0062": false,
+            "jig0063": false,
+            "jig0064": false,
+            "jig0065": false,
+            "jig0066": false,
+            "jig0067": false,
+            "jig0068": false,
+            "jig0069": false,
+            "jig0070": false,
+            "jig0071": false,
+            "jig0072": false,
+            "jig0073": false,
+            "jig0074": false,
+            "jig0075": false,
+            "jig0076": false,
+            "jig0077": false,
+            "jig0078": false,
+            "jig0079": false,
+            "jig0080": false,
+            "jig0081": false,
+            "jig0082": false,
+            "jig0083": false,
+            "jig0084": false,
+            "jig0085": false,
+            "jig0086": false,
+            "jig0087": false,
+            "jig0088": false,
+            "jig0089": false,
+            "jig0090": false,
+            "jig0091": false,
+            "jig0092": false,
+            "jig0093": false,
+            "jig0094": false,
+            "jig0095": false,
+            "jig0096": false,
+            "jig0097": false,
+            "jig0098": false,
+            "jig0099": false,
+            "jig0100": false,
+            "jig0101": false,
+            "jig0102": false,
+            "jig0103": false,
+            "jig0104": false,
+            "jig0105": false,
+            "jig0106": false,
+            "jig0107": false,
+            "jig0108": false,
+            "jig0109": false,
+            "jig0110": false,
+            "jig0111": false,
+            "jig0112": false,
+            "jig0113": false,
+            "jig0114": false,
+            "jig0115": false,
+            "jig0116": false,
+            "jig0117": false,
+            "jig0118": false,
+            "jig0119": false,
+            "jig0120": false,
+            "jig0121": false,
+            "jig0122": false,
+            "jig0123": false,
+            "jig0124": false,
+            "jig0125": false,
+            "jig0126": false,
+            "jig0127": false,
+            "jig0128": false,
+            "jig0129": false,
+            "jig0130": false,
+            "jig0131": false,
+            "jig0132": false,
+            "jig0133": false,
+            "jig0134": false,
+            "jig0135": false,
+            "jig0136": false,
+            "jig0137": false,
+            "jig0138": false,
+            "jig0139": false,
+            "jig0140": false,
+            "jig0141": false,
+            "jig0142": false,
+            "jig0143": false,
+            "jig0144": false,
+            "jig0145": false,
+            "jig0146": false,
+            "jig0147": false,
+            "jig0148": false,
+            "jig0149": false,
+            "jig0150": false,
+            "jig0151": false,
+            "jig0152": false,
+            "jig0153": false,
+            "jig0154": false,
+            "jig0155": false,
+            "jig0156": false,
+            "jig0157": false,
+            "jig0158": false,
+            "jig0159": false,
+            "jig0160": false,
+            "jig0161": false,
+            "jig0162": false,
+            "jig0163": false,
+            "jig0164": false,
+            "jig0165": false,
+            "jig0166": false,
+            "jig0167": false,
+            "jig0168": false,
+            "jig0169": false,
+            "jig0170": false,
+            "jig0171": false,
+            "jig0172": false,
+            "jig0173": false,
+            "jig0174": false,
+            "jig0175": false,
+            "jig0176": false,
+            "jig0177": false,
+            "jig0178": false,
+            "jig0179": false,
+            "jig0180": false,
+            "jig0181": false,
+            "jig0182": false,
+            "jig0183": false,
+            "jig0184": false,
+            "jig0185": false,
+            "jig0186": false,
+            "jig0187": false,
+            "jig0188": false,
+            "jig0189": false,
+            "jig0190": false,
+            "jig0191": false,
+            "jig0192": false,
+            "jig0193": false,
+            "jig0194": false,
+            "jig0195": false,
+            "jig0196": false,
+            "jig0197": false,
+            "jig0198": false,
+            "jig0199": false,
+            "jig0200": false,
+            "jig0201": false,
+            "jig0202": false,
+            "jig0203": false,
+            "jig0204": false,
+            "jig0205": false,
+            "jig0206": false,
+            "jig0207": false,
+            "jig0208": false,
+            "jig0209": false,
+            "jig0210": false,
+            "jig0211": false,
+            "jig0212": false,
+            "jig0213": false,
+            "jig0214": false,
+            "jig0215": false
+        },
+        "trailer_location": {
+            "beluga_trailer_1": [
+                "beluga",
+                null
+            ],
+            "beluga_trailer_2": [
+                "beluga",
+                null
+            ],
+            "factory_trailer_1": [
+                "hangar",
+                null
+            ],
+            "factory_trailer_2": [
+                "hangar",
+                null
+            ],
+            "factory_trailer_3": [
+                "hangar",
+                null
+            ]
+        },
+        "hangar_host": {
+            "hangar1": null,
+            "hangar2": null,
+            "hangar3": null
+        }
+    },
+    "final_step": 14,
+    "goal_reached": false,
+    "abrupt_plan_end": false,
+    "invalid_plan": true,
+    "time_limit_reached": false,
+    "step_limit_reached": false,
+    "free_racks": 0,
+    "score": {
+        "goal_reached": false,
+        "nb_actions": 16
+    }
+}

@@ -1,0 +1,346 @@
+[
+  {
+    "name": "unload_beluga",
+    "j": "jig0024",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0024",
+    "t": "beluga_trailer_1",
+    "r": "rack18",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0025",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0025",
+    "t": "beluga_trailer_1",
+    "r": "rack18",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0026",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0026",
+    "t": "beluga_trailer_1",
+    "r": "rack03",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0027",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0027",
+    "t": "beluga_trailer_1",
+    "r": "rack16",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0028",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0028",
+    "t": "beluga_trailer_1",
+    "r": "rack00",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0029",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0029",
+    "t": "beluga_trailer_1",
+    "r": "rack16",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0030",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0030",
+    "t": "beluga_trailer_1",
+    "r": "rack16",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0031",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0031",
+    "t": "beluga_trailer_1",
+    "r": "rack18",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0032",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0032",
+    "t": "beluga_trailer_1",
+    "r": "rack00",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0033",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0033",
+    "t": "beluga_trailer_1",
+    "r": "rack00",
+    "s": "bside"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0020",
+    "t": "beluga_trailer_1",
+    "r": "rack13",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0020",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "switch_to_next_beluga"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0034",
+    "b": "beluga2",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0034",
+    "t": "beluga_trailer_1",
+    "r": "rack13",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0035",
+    "b": "beluga2",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0035",
+    "t": "beluga_trailer_1",
+    "r": "rack04",
+    "s": "bside"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0023",
+    "t": "beluga_trailer_1",
+    "r": "rack07",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0023",
+    "b": "beluga2",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0017",
+    "t": "beluga_trailer_1",
+    "r": "rack08",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0017",
+    "b": "beluga2",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "switch_to_next_beluga"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0036",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0036",
+    "t": "beluga_trailer_1",
+    "r": "rack13",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0037",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0037",
+    "t": "beluga_trailer_1",
+    "r": "rack00",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0038",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0038",
+    "t": "beluga_trailer_1",
+    "r": "rack00",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0039",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0039",
+    "t": "beluga_trailer_1",
+    "r": "rack00",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0040",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0040",
+    "t": "beluga_trailer_1",
+    "r": "rack07",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0041",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0041",
+    "t": "beluga_trailer_1",
+    "r": "rack07",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0042",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0042",
+    "t": "beluga_trailer_1",
+    "r": "rack07",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0044",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0044",
+    "t": "beluga_trailer_1",
+    "r": "rack07",
+    "s": "bside"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0011",
+    "t": "beluga_trailer_1",
+    "r": "rack11",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0011",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0045",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0045",
+    "t": "beluga_trailer_1",
+    "r": "rack11",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0043",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0043",
+    "t": "beluga_trailer_1",
+    "r": "rack11",
+    "s": "bside"
+  }
+]

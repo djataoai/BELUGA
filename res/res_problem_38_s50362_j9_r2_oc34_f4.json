@@ -1,0 +1,15 @@
+[
+  {
+    "name": "unload_beluga",
+    "j": "jig0005",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0005",
+    "t": "beluga_trailer_1",
+    "r": "rack00",
+    "s": "bside"
+  }
+]

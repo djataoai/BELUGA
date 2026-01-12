@@ -1,0 +1,18 @@
+=== STDOUT ===
+{
+    "plan_construction_time": 6.461143493652344e-05,
+    "error_msg": "No plan was produced",
+    "plan": [],
+    "final_state": null,
+    "final_step": null,
+    "goal_reached": false,
+    "abrupt_plan_end": false,
+    "invalid_plan": false,
+    "time_limit_reached": false,
+    "step_limit_reached": false,
+    "free_racks": null,
+    "score": {
+        "goal_reached": false,
+        "nb_actions": 0
+    }
+}

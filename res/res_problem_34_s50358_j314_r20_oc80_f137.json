@@ -1,0 +1,225 @@
+[
+  {
+    "name": "pick_up_rack",
+    "j": "jig0038",
+    "t": "beluga_trailer_1",
+    "r": "rack10",
+    "s": "bside"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0038",
+    "t": "beluga_trailer_1",
+    "r": "rack01",
+    "s": "bside"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0025",
+    "t": "beluga_trailer_1",
+    "r": "rack10",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0025",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "switch_to_next_beluga"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0039",
+    "b": "beluga2",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0039",
+    "t": "beluga_trailer_1",
+    "r": "rack10",
+    "s": "bside"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0038",
+    "t": "beluga_trailer_1",
+    "r": "rack01",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0038",
+    "b": "beluga2",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0029",
+    "t": "beluga_trailer_1",
+    "r": "rack11",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0029",
+    "b": "beluga2",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0034",
+    "t": "beluga_trailer_1",
+    "r": "rack18",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0034",
+    "b": "beluga2",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "switch_to_next_beluga"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0040",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0040",
+    "t": "beluga_trailer_1",
+    "r": "rack10",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0041",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0041",
+    "t": "beluga_trailer_1",
+    "r": "rack19",
+    "s": "bside"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0026",
+    "t": "beluga_trailer_1",
+    "r": "rack17",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0026",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0014",
+    "t": "beluga_trailer_1",
+    "r": "rack07",
+    "s": "bside"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0014",
+    "t": "beluga_trailer_1",
+    "r": "rack00",
+    "s": "bside"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0002",
+    "t": "beluga_trailer_1",
+    "r": "rack07",
+    "s": "bside"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0002",
+    "t": "beluga_trailer_1",
+    "r": "rack11",
+    "s": "bside"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0001",
+    "t": "beluga_trailer_1",
+    "r": "rack07",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0001",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0042",
+    "b": "beluga3",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0042",
+    "t": "beluga_trailer_1",
+    "r": "rack17",
+    "s": "bside"
+  },
+  {
+    "name": "switch_to_next_beluga"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0021",
+    "t": "beluga_trailer_1",
+    "r": "rack05",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0021",
+    "b": "beluga4",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0015",
+    "t": "beluga_trailer_1",
+    "r": "rack09",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0015",
+    "b": "beluga4",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "switch_to_next_beluga"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0043",
+    "b": "beluga5",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0043",
+    "t": "beluga_trailer_1",
+    "r": "rack07",
+    "s": "bside"
+  }
+]

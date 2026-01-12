@@ -1,0 +1,119 @@
+[
+  {
+    "name": "unload_beluga",
+    "j": "jig0007",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0007",
+    "t": "beluga_trailer_1",
+    "r": "rack01",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0008",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0008",
+    "t": "beluga_trailer_1",
+    "r": "rack01",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0009",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0009",
+    "t": "beluga_trailer_1",
+    "r": "rack00",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0010",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0010",
+    "t": "beluga_trailer_1",
+    "r": "rack00",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0011",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0011",
+    "t": "beluga_trailer_1",
+    "r": "rack00",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0013",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0013",
+    "t": "beluga_trailer_1",
+    "r": "rack02",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0015",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0015",
+    "t": "beluga_trailer_1",
+    "r": "rack02",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0014",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0014",
+    "t": "beluga_trailer_1",
+    "r": "rack02",
+    "s": "bside"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0012",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0012",
+    "t": "beluga_trailer_1",
+    "r": "rack02",
+    "s": "bside"
+  }
+]

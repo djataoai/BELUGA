@@ -137,14 +137,20 @@ class GetFromHangar(Action):
     hangar: str
     trailer: str
     def is_applicable(self, s: State) -> bool:
-        is_factory = "factory" in self.trailer or s.trailer_location.get(self.trailer)[1] == "fside"
+        # On vérifie la position du trailer (doit être côté usine)
+        loc = s.trailer_location.get(self.trailer)
+        is_factory = "factory" in self.trailer or (loc and loc[1] == "fside")
         return (s.hangar_host.get(self.hangar) == self.jig) and (s.trailer_load.get(self.trailer) is None) and is_factory
+
     def apply(self, s: State) -> State:
         ns = s.copy()
+        # Le hangar devient vide
         ns.hangar_host[self.hangar] = None
+        # Le jig est maintenant sur le trailer
         ns.trailer_load[self.trailer] = self.jig
+        # On peut aussi mettre à jour la localisation du trailer pour être précis
+        # ns.trailer_location[self.trailer] = ("hangar", "fside") 
         return ns
-
 @dataclass
 class DeliverToHangar(Action):
     jig: str
@@ -165,15 +171,21 @@ class DeliverToHangar(Action):
 
 @dataclass
 class PutDownRack(Action):
+    #ajout de jig sur le rack
     jig: str
     trailer: str
     rack: str
     side: str
-    def is_applicable(self, s: State) -> bool: return (s.trailer_load.get(self.trailer) == self.jig) and (self.rack in s.rack_contents)
+    def is_applicable(self, s: State) -> bool: 
+        return (s.trailer_load.get(self.trailer) == self.jig) and (self.rack in s.rack_contents)
     def apply(self, s: State) -> State:
         ns = s.copy()
         ns.trailer_load[self.trailer] = None
-        if self.side == "bside": ns.rack_contents[self.rack].insert(0, self.jig)
+        # Mise à jour de la position physique du trailer
+        ns.trailer_location[self.trailer] = (self.rack, self.side)
+        
+        if self.side == "bside": 
+            ns.rack_contents[self.rack].insert(0, self.jig)
         else: 
             ns.rack_contents[self.rack].append(self.jig)
             ns.jig_empty[self.jig] = True
@@ -192,22 +204,33 @@ class PickUpRack(Action):
         return s.trailer_load.get(self.trailer) is None and at_edge
     def apply(self, s: State) -> State:
         ns = s.copy()
-        if self.side == "bside": ns.rack_contents[self.rack].pop(0)
-        else: ns.rack_contents[self.rack].pop()
+        if self.side == "bside": 
+            ns.rack_contents[self.rack].pop(0)
+        else: 
+            ns.rack_contents[self.rack].pop()
+        
         ns.trailer_load[self.trailer] = self.jig
+        
+        ns.trailer_location[self.trailer] = (self.rack, self.side)
+        
         return ns
 
 @dataclass
 class SwitchToNextBeluga(Action):
     next_beluga: str
-    def is_applicable(self, s: State) -> bool: return self.next_beluga in s.flights and s.current_beluga != self.next_beluga
+    def is_applicable(self, s: State) -> bool: 
+        return self.next_beluga in s.flights and s.current_beluga != self.next_beluga
     def apply(self, s: State) -> State:
-        ns = s.copy()
-        if ns.current_beluga: ns.last_belugas.append(ns.current_beluga)
-        ns.current_beluga = self.next_beluga
-        ns.remaining_outgoing = list(ns.flights[ns.current_beluga].outgoing)
-        ns.beluga_contents = list(ns.flights[self.next_beluga].incoming)
-        return ns
+            ns = s.copy()
+            if ns.current_beluga: ns.last_belugas.append(ns.current_beluga)
+            ns.current_beluga = self.next_beluga
+            
+            # Incohérence résolue : on ne remet dans l'avion que ce qui n'est pas déjà dans un rack
+            all_jigs_on_ground = [j for contents in ns.rack_contents.values() for j in contents]
+            ns.beluga_contents = [j for j in ns.flights[self.next_beluga].incoming if j not in all_jigs_on_ground]
+            
+            ns.remaining_outgoing = list(ns.flights[ns.current_beluga].outgoing)
+            return ns
 
 # @dataclass
 # class MacroAction(Action):
@@ -279,9 +302,15 @@ def get_jig_size(state: State, jig: str) -> int:
 def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: str) -> Tuple[Optional[str], Optional[str]]:
     best_rack, best_score = None, None
     j_size = get_jig_size(state, jig)
+    
     for rname, contents in state.rack_contents.items():
+        # Calculer l'espace déjà utilisé dans ce rack
         used = sum(get_jig_size(state, j) for j in contents)
-        if used + j_size > state.racks[rname].size: continue
+        
+        
+        if used + j_size > state.racks[rname].size: 
+            continue
+            
         blocked = contents[0] if (side == "bside" and contents) else (contents[-1] if contents else None)
         score = urgency.get(blocked, -1) if blocked else -1
         if best_score is None or (side == "bside" and score > best_score) or (side == "fside" and score < best_score):
@@ -354,30 +383,62 @@ def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[A
 # ---------- Main Planning Engine ----------
 
 
-
 def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tuple[MacroAction, float]]:
     actions = []
-    # 1. Switch
-    if not state.beluga_contents and not state.remaining_outgoing:
-        all_b = list(state.flights.keys())
-        curr_idx = all_b.index(state.current_beluga) if state.current_beluga in all_b else -1
+    curr_b = state.current_beluga
+    if not curr_b:
+        return actions
+
+    # --- 0. ÉTAT DES LIEUX (Anti-boucle) ---
+    # On identifie les jigs déjà au sol pour ne pas les "re-décharger"
+    jigs_au_sol = set()
+    for content in state.rack_contents.values():
+        jigs_au_sol.update(content)
+    for t_load in state.trailer_load.values():
+        if t_load: jigs_au_sol.add(t_load)
+
+    # --- 1. SWITCH BELUGA (Verrouillé) ---
+    # Un avion ne peut partir que s'il est VIDE et RECHARGÉ.
+    all_b = list(state.flights.keys())
+    avion_fini = len(state.beluga_contents) == 0 and len(state.remaining_outgoing) == 0
+    
+    try:
+        curr_idx = all_b.index(curr_b)
         if curr_idx + 1 < len(all_b):
-            nxt = all_b[curr_idx+1]
+            nxt = all_b[curr_idx + 1]
             sw = SwitchToNextBeluga(nxt)
-            if sw.is_applicable(state): actions.append((MacroAction([sw], 1, 0, f"switch({nxt})"), -100.0))
+            if sw.is_applicable(state):
+                # Si l'avion n'est pas fini, le score est prohibitif (5000)
+                # Si fini, c'est la priorité absolue (-1000)
+                score_sw = -1000.0 if avion_fini else 5000.0
+                actions.append((MacroAction([sw], 1, 0, f"switch({nxt})"), score_sw))
+    except ValueError: pass
 
-    # 2. Unload
+    # --- 2. UNLOAD (Filtre physique) ---
     for j in state.beluga_contents:
+        # INTERDICTION : décharger un jig qui est déjà dans un rack
+        if j in jigs_au_sol:
+            continue
         acts = unload_jig_from_beluga(state, j)
-        if acts: actions.append((MacroAction(acts, len(acts), 0, f"unload({j})"), 1.0))
+        if acts:
+            actions.append((MacroAction(acts, len(acts), 0, f"unload({j})"), 10.0))
 
-    # 3. Production
+    # --- 3. PRODUCTION (Filtre de progression) ---
     for pl_name, pl in state.production_lines.items():
-        delivered = len(state.production_line_deliveries.get(pl_name, []))
-        if delivered >= len(pl.schedule): continue
-        next_j = pl.schedule[delivered]
+        delivered = state.production_line_deliveries.get(pl_name, [])
+        if len(delivered) >= len(pl.schedule):
+            continue
+            
+        next_j = pl.schedule[len(delivered)]
+        
+        # INTERDICTION : Produire un jig qui est déjà dans un hangar
+        if next_j in state.hangar_host.values():
+            continue
+
         rname, pos = find_rack_and_pos(state, next_j)
         if not rname: continue
+        
+        score_prod = -50.0 * urgency.get(next_j, 1) # Très prioritaire
         
         is_edge = (pos == len(state.rack_contents[rname]) - 1)
         if is_edge:
@@ -386,36 +447,43 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
                 s_tmp = state
                 for a in acts: s_tmp = a.apply(s_tmp)
                 acts2 = bring_jig_to_rack(s_tmp, next_j, urgency)
-                if acts2: actions.append((MacroAction(acts+acts2, len(acts+acts2), 0, f"prod({next_j})"), -10.0 * urgency[next_j]))
+                if acts2:
+                    actions.append((MacroAction(acts + acts2, len(acts + acts2), 0, f"prod({next_j})"), score_prod))
         else:
             sw_acts = swap(state, rname, next_j, "fside", urgency)
             if sw_acts:
                 s_tmp = state
                 for a in sw_acts: s_tmp = a.apply(s_tmp)
                 acts = send_one_edge_jig(s_tmp, next_j, pl_name)
-                for a in acts: s_tmp = a.apply(s_tmp)
-                acts2 = bring_jig_to_rack(s_tmp, next_j, urgency)
-                if acts2: actions.append((MacroAction(sw_acts+acts+acts2, len(sw_acts+acts+acts2), 2.0, f"swap_prod({next_j})"), -5.0 * urgency[next_j]))
+                if acts:
+                    for a in acts: s_tmp = a.apply(s_tmp)
+                    acts2 = bring_jig_to_rack(s_tmp, next_j, urgency)
+                    if acts2:
+                        actions.append((MacroAction(sw_acts + acts + acts2, len(sw_acts+acts+acts2), 2.0, f"swap_prod({next_j})"), score_prod + 5.0))
 
-    # 4. Load
+    # --- 4. LOAD (Chargement) ---
     for jt in set(state.remaining_outgoing):
         best_j = None
         for r, conts in state.rack_contents.items():
             for j in conts:
-                if state.jigs[j].type == jt and state.jig_empty.get(j):
+                # On ne recharge que les jigs VIDES et qui ne viennent pas de descendre de l'avion
+                if state.jigs[j].type == jt and state.jig_empty.get(j) and j not in state.flights[curr_b].incoming:
                     best_j = j; break
+            if best_j: break
+            
         if best_j:
             rname, pos = find_rack_and_pos(state, best_j)
-            sw_acts = []
-            if pos != 0: sw_acts = swap(state, rname, best_j, "bside", urgency)
+            sw_acts = swap(state, rname, best_j, "bside", urgency) if pos != 0 else []
             s_tmp = state
             for a in sw_acts: s_tmp = a.apply(s_tmp)
             tr = find_trailer_at(s_tmp, "bside", True)
             if tr:
                 p = PickUpRack(best_j, tr, rname, "bside")
-                l = RegisterOutgoingJig(best_j, tr, s_tmp.current_beluga)
-                if l.is_applicable(p.apply(s_tmp)):
-                    actions.append((MacroAction(sw_acts + [p, l], len(sw_acts)+2, 0, f"load({best_j})"), 5.0))
+                s_mid = p.apply(s_tmp)
+                l = RegisterOutgoingJig(best_j, tr, s_mid.current_beluga)
+                if l.is_applicable(s_mid):
+                    actions.append((MacroAction(sw_acts + [p, l], len(sw_acts)+2, 0, f"load({best_j})"), -100.0))
+
     return actions
 
 def is_terminal_state(state: State) -> bool:
@@ -448,27 +516,33 @@ def is_terminal_state(state: State) -> bool:
 
 #     with open(output_path, "w") as f: json.dump(history, f, indent=2)
 #     return history
-
 def run_greedy_with_backtracking(initial_state: State, output_path: str = "result.json", max_backtrack: int = 5):
     stack = []
     state = initial_state
     history = []
     step = 0
     
+    print(f"\n🚀 DÉMARRAGE DU PLANIFICATEUR")
+    print(f"📦 État Initial | Beluga: {state.current_beluga} | Racks: {len(state.rack_contents)}")
+    print(f"{'='*60}")
+
     while not is_terminal_state(state):
         urgency = compute_urgency(state)
         raw_actions = generate_possible_actions(state, urgency)
         
-        # FILTRE : On ne garde que ce qui est réellement APPLICABLE maintenant
+        # FILTRE : On ne garde que ce qui est réellement APPLICABLE
         valid_actions = [(a, s) for a, s in raw_actions if a.is_applicable(state)]
 
         if not valid_actions:
             if not stack:
-                # Plus aucune solution, on arrête proprement
+                print(f"\n❌ [ÉCHEC] Blocage total à l'étape {step}. Aucune action valide.")
                 break
-            # BACKTRACK
+            
+            # --- LOG BACKTRACK ---
             node = stack.pop()
             state, history = node.state, node.history
+           
+            
             if not node.remaining_actions:
                 continue
             best = node.remaining_actions.pop(0)
@@ -482,15 +556,35 @@ def run_greedy_with_backtracking(initial_state: State, output_path: str = "resul
                 alts = [a for a, s in valid_actions[1:max_backtrack]]
                 stack.append(SearchNode(state.copy(), alts, list(history)))
         
-        # Application et mise à jour de l'historique
-        # Note: best.apply(state) crée déjà des copies via les actions atomiques
+        # --- LOG PROGRESSION EXPLICITE (Comme le JSON) ---
+        print(f"\nStep {step:04} | Macro: {best.name.upper()}")
+        print("bstate.remaining_outgoing", state.remaining_outgoing)
+        print (f"bstate.beluga_contents", state.beluga_contents)
+        print(f"{'-'*60}")
+        # On exécute et on affiche chaque sous-action comme dans le JSON final
         for a in best.actions:
+            # Récupération du dictionnaire au format JSON pour l'affichage
+            eval_dict = action_to_evaluator_dict(a)
+            
+            # Affichage formaté
+            action_name = eval_dict.get("name", "unknown")
+            details = ", ".join([f"{k}:{v}" for k, v in eval_dict.items() if k != "name"])
+            print(f"  └─ {action_name:<18} | {details}")
+
+            # Application réelle
             state = a.apply(state)
-            history.append(action_to_evaluator_dict(a))
+            history.append(eval_dict)
             
         step += 1
-        if step > 3000: break # Sécurité augmentée
+        if step > 5000: 
+            print(f"\n⚠️ [LIMITE] Arrêt de sécurité (5000 étapes).")
+            break
 
+    if is_terminal_state(state):
+        print(f"\n{'='*60}")
+        print(f"✅ [SUCCÈS] Planification terminée avec succès !")
+        print(f"📈 Total actions atomiques: {len(history)}")
+    
     with open(output_path, "w") as f:
         json.dump(history, f, indent=2)
     return history
@@ -523,62 +617,65 @@ def load_instance_from_json(path: str) -> State:
         s.beluga_contents = list(s.flights[first_f].incoming)
     return s
 
-if __name__ == "__main__":
-    # 1. Configuration des dossiers
-    input_dir = Path("instances")
-    output_dir = Path("resultats")
+# if __name__ == "__main__":
+#     # 1. Configuration des dossiers
+#     input_dir = Path("instances")
+#     output_dir = Path("resultats")
 
-    # 2. Création du dossier de sortie
-    output_dir.mkdir(parents=True, exist_ok=True)
+#     # 2. Création du dossier de sortie
+#     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 3. Récupération de la liste des fichiers
-    instances_files = list(input_dir.glob("*.json"))
+#     # 3. Récupération de la liste des fichiers
+#     instances_files = list(input_dir.glob("*.json"))
 
-    if not instances_files:
-        print(f"[-] Aucun fichier JSON trouvé dans le dossier '{input_dir}'")
-    else:
-        # 4. Initialisation de la barre de progression
-        # desc: texte affiché à gauche, unit: l'unité de mesure
-        for file_path in tqdm(instances_files, desc="Traitement des instances", unit="file"):
+#     if not instances_files:
+#         print(f"[-] Aucun fichier JSON trouvé dans le dossier '{input_dir}'")
+#     else:
+#         # 4. Initialisation de la barre de progression
+#         # desc: texte affiché à gauche, unit: l'unité de mesure
+#         for file_path in tqdm(instances_files, desc="Traitement des instances", unit="file"):
             
-            output_file_path = output_dir / f"res_{file_path.name}"
+#             output_file_path = output_dir / f"res_{file_path.name}"
 
-            try:
-                # Chargement
-                s = load_instance_from_json(file_path)
+#             try:
+#                 # Chargement
+#                 s = load_instance_from_json(file_path)
                 
-                # Exécution
-                run_greedy_with_backtracking(s, output_path=str(output_file_path))
+#                 # Exécution
+#                 run_greedy_with_backtracking(s, output_path=str(output_file_path))
                 
-            except Exception as e:
-                # tqdm.write permet d'afficher des messages sans casser la barre
-                tqdm.write(f"[Erreur] Sur le fichier {file_path.name} : {e}")
+#             except Exception as e:
+#                 # tqdm.write permet d'afficher des messages sans casser la barre
+#                 tqdm.write(f"[Erreur] Sur le fichier {file_path.name} : {e}")
 
-        print("\n" + "="*30)
-        print("Opération terminée.")
-        print("="*30)
+#         print("\n" + "="*30)
+#         print("Opération terminée.")
+#         print("="*30)
 
 # from pathlib import Path
 
-# if __name__ == "__main__":
-#     # Fichier d'entrée (une seule instance)
-#     input_file = Path("/home/aichatou/ProjetBeluga/belugaModel/instances/problem_2_s50326_j418_r20_oc53_f167.json")
+if __name__ == "__main__":
+    # Fichier d'entrée (une seule instance)
+    input_file = Path("/home/aichatou/ProjetBeluga/belugaModel/instances_bb/problem_2_s50326_j418_r20_oc53_f167.json")
     
-#     # Dossier de sortie
-#     output_dir = Path("resultats")
-#     output_dir.mkdir(parents=True, exist_ok=True)
+    # Dossier de sortie
+    output_dir = Path("resultats")
+    output_dir.mkdir(parents=True, exist_ok=True)
     
-#     # Fichier de sortie
-#     output_file = output_dir / f"res_{input_file.name}"
+    # Fichier de sortie
+    output_file = output_dir / f"res_{input_file.name}"
 
-#     try:
-#         # Chargement de l'instance
-#         s = load_instance_from_json(input_file)
+    try:
+        # Chargement de l'instance
+        s = load_instance_from_json(input_file)
         
-#         # Exécution de l'algorithme
-#         run_greedy_with_backtracking(s, output_path=str(output_file))
+        # Exécution de l'algorithme
+        run_greedy_with_backtracking(s, output_path=str(output_file))
         
-#         print("[OK] Instance traitée avec succès.")
+        print("[OK] Instance traitée avec succès.")
     
-#     except Exception as e:
-#         print(f"[Erreur] {e}")
+    except Exception as e:
+        import traceback
+        print(f"❌ [ERREUR CRITIQUE]")
+        traceback.print_exc() # Ceci v
+        print(f"[Erreur] {e}")

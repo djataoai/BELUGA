@@ -1354,7 +1354,7 @@ def run_greedy_with_backtracking(initial_state: State, output_path: str = "resul
 
 if __name__ == "__main__":
     # path where you uploaded your JSON
-    path = "problem_143_s185_j5_r2_oc28_f3.json"
+    path = "/home/aichatou/ProjetBeluga/belugaModel/instances/problem_1_s50325_j177_r9_oc80_f49.json"
     #path= "problem_103_s145_j266_r20_oc21_f173.json"
     s = load_instance_from_json(path)
     print("Loaded state:")

@@ -1,0 +1,200 @@
+=== STDOUT ===
+{
+    "plan_construction_time": 0.0001354217529296875,
+    "error_msg": null,
+    "plan": [
+        {
+            "name": "unload_beluga",
+            "j": "jig0004",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0004",
+            "t": "beluga_trailer_1",
+            "r": "rack00",
+            "s": "bside"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0005",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0005",
+            "t": "beluga_trailer_1",
+            "r": "rack00",
+            "s": "bside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0003",
+            "t": "beluga_trailer_1",
+            "r": "rack01",
+            "s": "bside"
+        },
+        {
+            "name": "load_beluga",
+            "j": "jig0003",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0005",
+            "t": "beluga_trailer_1",
+            "r": "rack00",
+            "s": "bside"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0005",
+            "t": "beluga_trailer_1",
+            "r": "rack01",
+            "s": "bside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0004",
+            "t": "beluga_trailer_1",
+            "r": "rack00",
+            "s": "bside"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0004",
+            "t": "beluga_trailer_1",
+            "r": "rack01",
+            "s": "bside"
+        },
+        {
+            "name": "pick_up_rack",
+            "j": "jig0002",
+            "t": "beluga_trailer_1",
+            "r": "rack00",
+            "s": "bside"
+        },
+        {
+            "name": "load_beluga",
+            "j": "jig0002",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0006",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0006",
+            "t": "beluga_trailer_1",
+            "r": "rack00",
+            "s": "bside"
+        },
+        {
+            "name": "switch_to_next_beluga"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0007",
+            "b": "beluga2",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0007",
+            "t": "beluga_trailer_1",
+            "r": "rack00",
+            "s": "bside"
+        }
+    ],
+    "final_state": {
+        "current_beluga": "beluga2",
+        "last_belugas": [
+            "beluga1",
+            "beluga2"
+        ],
+        "beluga_contents": [],
+        "production_line_deliveries": {
+            "pl0": [],
+            "pl1": []
+        },
+        "rack_contents": {
+            "rack00": [
+                "jig0007",
+                "jig0006",
+                "jig0001"
+            ],
+            "rack01": [
+                "jig0004",
+                "jig0005"
+            ],
+            "rack02": []
+        },
+        "trailer_load": {
+            "beluga_trailer_1": null,
+            "factory_trailer_1": null,
+            "factory_trailer_2": null
+        },
+        "jig_empty": {
+            "jig0001": true,
+            "jig0002": true,
+            "jig0003": true,
+            "jig0004": false,
+            "jig0005": false,
+            "jig0006": false,
+            "jig0007": false,
+            "jig0008": false,
+            "jig0009": false,
+            "jig0010": false,
+            "jig0011": false,
+            "jig0012": false,
+            "jig0013": false,
+            "jig0014": false,
+            "jig0015": false,
+            "jig0016": false,
+            "jig0017": false,
+            "jig0018": false,
+            "jig0019": false,
+            "jig0020": false,
+            "jig0021": false,
+            "jig0022": false,
+            "jig0023": false,
+            "jig0024": false,
+            "jig0025": false
+        },
+        "trailer_location": {
+            "beluga_trailer_1": [
+                "rack00",
+                "bside"
+            ],
+            "factory_trailer_1": [
+                "hangar",
+                null
+            ],
+            "factory_trailer_2": [
+                "hangar",
+                null
+            ]
+        },
+        "hangar_host": {
+            "hangar1": null
+        }
+    },
+    "final_step": 17,
+    "goal_reached": false,
+    "abrupt_plan_end": true,
+    "invalid_plan": false,
+    "time_limit_reached": false,
+    "step_limit_reached": false,
+    "free_racks": 1,
+    "score": {
+        "goal_reached": false,
+        "nb_actions": 17
+    }
+}

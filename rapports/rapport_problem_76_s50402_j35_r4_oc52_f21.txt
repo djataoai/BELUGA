@@ -1,0 +1,252 @@
+=== STDOUT ===
+{
+    "plan_construction_time": 0.000102996826171875,
+    "error_msg": "No matching applicable action found for {\"name\": \"unload_beluga\", \"j\": \"jig0013\", \"b\": \"beluga1\", \"t\": \"beluga_trailer_1\"}",
+    "plan": [
+        {
+            "name": "unload_beluga",
+            "j": "jig0004",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0004",
+            "t": "beluga_trailer_1",
+            "r": "rack01",
+            "s": "bside"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0005",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0005",
+            "t": "beluga_trailer_1",
+            "r": "rack01",
+            "s": "bside"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0006",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0006",
+            "t": "beluga_trailer_1",
+            "r": "rack01",
+            "s": "bside"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0007",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0007",
+            "t": "beluga_trailer_1",
+            "r": "rack01",
+            "s": "bside"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0008",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0008",
+            "t": "beluga_trailer_1",
+            "r": "rack01",
+            "s": "bside"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0009",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0009",
+            "t": "beluga_trailer_1",
+            "r": "rack02",
+            "s": "bside"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0010",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0010",
+            "t": "beluga_trailer_1",
+            "r": "rack03",
+            "s": "bside"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0011",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0011",
+            "t": "beluga_trailer_1",
+            "r": "rack03",
+            "s": "bside"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0013",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0013",
+            "t": "beluga_trailer_1",
+            "r": "rack03",
+            "s": "bside"
+        },
+        {
+            "name": "unload_beluga",
+            "j": "jig0012",
+            "b": "beluga1",
+            "t": "beluga_trailer_1"
+        },
+        {
+            "name": "put_down_rack",
+            "j": "jig0012",
+            "t": "beluga_trailer_1",
+            "r": "rack03",
+            "s": "bside"
+        }
+    ],
+    "final_state": {
+        "current_beluga": "beluga1",
+        "last_belugas": [
+            "beluga1"
+        ],
+        "beluga_contents": [
+            "jig0013",
+            "jig0012"
+        ],
+        "production_line_deliveries": {
+            "pl0": []
+        },
+        "rack_contents": {
+            "rack00": [
+                "jig0001"
+            ],
+            "rack01": [
+                "jig0008",
+                "jig0007",
+                "jig0006",
+                "jig0005",
+                "jig0004",
+                "jig0003"
+            ],
+            "rack02": [
+                "jig0009",
+                "jig0002"
+            ],
+            "rack03": [
+                "jig0011",
+                "jig0010"
+            ]
+        },
+        "trailer_load": {
+            "beluga_trailer_1": null,
+            "beluga_trailer_2": null,
+            "factory_trailer_1": null,
+            "factory_trailer_2": null,
+            "factory_trailer_3": null
+        },
+        "jig_empty": {
+            "jig0001": true,
+            "jig0002": true,
+            "jig0003": true,
+            "jig0004": false,
+            "jig0005": false,
+            "jig0006": false,
+            "jig0007": false,
+            "jig0008": false,
+            "jig0009": false,
+            "jig0010": false,
+            "jig0011": false,
+            "jig0012": false,
+            "jig0013": false,
+            "jig0014": false,
+            "jig0015": false,
+            "jig0016": false,
+            "jig0017": false,
+            "jig0018": false,
+            "jig0019": false,
+            "jig0020": false,
+            "jig0021": false,
+            "jig0022": false,
+            "jig0023": false,
+            "jig0024": false,
+            "jig0025": false,
+            "jig0026": false,
+            "jig0027": false,
+            "jig0028": false,
+            "jig0029": false,
+            "jig0030": false,
+            "jig0031": false,
+            "jig0032": false,
+            "jig0033": false,
+            "jig0034": false,
+            "jig0035": false
+        },
+        "trailer_location": {
+            "beluga_trailer_1": [
+                "rack03",
+                "bside"
+            ],
+            "beluga_trailer_2": [
+                "beluga",
+                null
+            ],
+            "factory_trailer_1": [
+                "hangar",
+                null
+            ],
+            "factory_trailer_2": [
+                "hangar",
+                null
+            ],
+            "factory_trailer_3": [
+                "hangar",
+                null
+            ]
+        },
+        "hangar_host": {
+            "hangar1": null,
+            "hangar2": null
+        }
+    },
+    "final_step": 16,
+    "goal_reached": false,
+    "abrupt_plan_end": false,
+    "invalid_plan": true,
+    "time_limit_reached": false,
+    "step_limit_reached": false,
+    "free_racks": 0,
+    "score": {
+        "goal_reached": false,
+        "nb_actions": 20
+    }
+}

@@ -1,6 +1,6 @@
 === STDOUT ===
 {
-    "plan_construction_time": 0.0006871223449707031,
+    "plan_construction_time": 0.00018858909606933594,
     "error_msg": null,
     "plan": [
         {
@@ -62,14 +62,14 @@
         },
         {
             "name": "pick_up_rack",
-            "j": "jig0011",
+            "j": "jig0028",
             "t": "beluga_trailer_1",
-            "r": "rack12",
+            "r": "rack00",
             "s": "bside"
         },
         {
             "name": "load_beluga",
-            "j": "jig0011",
+            "j": "jig0028",
             "b": "beluga2",
             "t": "beluga_trailer_1"
         },
@@ -88,14 +88,14 @@
         },
         {
             "name": "pick_up_rack",
-            "j": "jig0028",
+            "j": "jig0011",
             "t": "beluga_trailer_1",
-            "r": "rack00",
+            "r": "rack12",
             "s": "bside"
         },
         {
             "name": "load_beluga",
-            "j": "jig0028",
+            "j": "jig0011",
             "b": "beluga2",
             "t": "beluga_trailer_1"
         }
@@ -107,10 +107,10 @@
             "beluga2"
         ],
         "beluga_contents": [
-            "jig0025",
-            "jig0031",
+            "jig0011",
             "jig0028",
-            "jig0011"
+            "jig0025",
+            "jig0031"
         ],
         "production_line_deliveries": {
             "pl0": []

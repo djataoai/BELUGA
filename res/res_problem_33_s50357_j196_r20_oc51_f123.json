@@ -1,0 +1,15 @@
+[
+  {
+    "name": "pick_up_rack",
+    "j": "jig0007",
+    "t": "beluga_trailer_1",
+    "r": "rack12",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0007",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  }
+]

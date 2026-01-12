@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pick_up_rack",
+    "j": "jig0001",
+    "t": "beluga_trailer_1",
+    "r": "rack10",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0001",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "unload_beluga",
+    "j": "jig0013",
+    "b": "beluga1",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0013",
+    "t": "beluga_trailer_1",
+    "r": "rack00",
+    "s": "bside"
+  },
+  {
+    "name": "switch_to_next_beluga"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0004",
+    "t": "beluga_trailer_1",
+    "r": "rack11",
+    "s": "bside"
+  },
+  {
+    "name": "load_beluga",
+    "j": "jig0004",
+    "b": "beluga2",
+    "t": "beluga_trailer_1"
+  },
+  {
+    "name": "switch_to_next_beluga"
+  }
+]
