@@ -4,7 +4,7 @@
 
 max_iterations: 120
 checkpoint_interval: 10
-log_level: "INFO"
+log_level: "ERROR"
 
 # ============================================================
 # LLM configuration
@@ -25,6 +25,7 @@ llm:
 # ============================================================
 prompt:
   system_message: |
+    "Réponds uniquement avec du code Python brut. Ne mets aucune balise Markdown, ne commence pas par ```python et ne finis pas par ```. Aucun texte d'explication."
     You are an expert in automated planning, constraint-based scheduling,
     and logistics control systems.
 
@@ -107,7 +108,7 @@ prompt:
 # Database / population management
 # ============================================================
 database:
-  population_size: 80
+  population_size: 40
   archive_size: 40
   num_islands: 6
   elite_selection_ratio: 0.25
@@ -118,12 +119,12 @@ database:
 # ============================================================
 evaluator:
   timeout: 120
-  cascade_evaluation: true
+  cascade_evaluation: false
   cascade_thresholds:
     - 0.4   # partial feasibility (no immediate deadlock)
     - 0.7   # successful handling of several Beluga flights
     - 1.0   # full final state reached
-  parallel_evaluations: 4
+  parallel_evaluations: 2 
   use_llm_feedback: false
 
 # ============================================================

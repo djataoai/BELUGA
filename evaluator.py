@@ -1,161 +1,214 @@
-"""
-OpenEvolve evaluator for Beluga planning problem
-Deterministic version
-"""
-
-import subprocess
-import tempfile
+import json
 import os
-import sys
 import time
-import pickle
-import traceback
+import subprocess
+import sys
+from typing import List, Dict, Any
+
+# Importation des composants du modèle Beluga
+from beluga_model_avecjsoncorrect import (
+    State, UnloadBeluga, LoadBeluga, PickUpRack, PutDownRack,
+    DeliverToHangar, GetFromHangar, SwitchToNextBeluga, RegisterOutgoingJig,
+    load_instance_from_json, is_terminal_state
+)
 
 
-class TimeoutError(Exception):
+# =========================
+# Exceptions
+# =========================
+
+class PlanValidationError(Exception):
+    """Erreur levée quand une action du plan est invalide ou inapplicable."""
     pass
 
 
-def run_with_timeout(program_path, timeout_seconds=600):
-    """
-    Execute a candidate planner in a subprocess and retrieve evaluation outcome.
-    """
+# =========================
+# Désérialisation des actions
+# =========================
 
-    with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as temp_file:
-        wrapper_code = f"""
-import sys
-import os
-import pickle
-import traceback
+def reconstruct_action(action_dict: Dict[str, Any]) -> Any:
+    name = action_dict.get("name")
 
-# Make candidate program importable
-sys.path.insert(0, os.path.dirname("{program_path}"))
+    mapping = {
+        "unload_beluga": UnloadBeluga,
+        "load_beluga": LoadBeluga,
+        "pick_up_rack": PickUpRack,
+        "put_down_rack": PutDownRack,
+        "deliver_to_hangar": DeliverToHangar,
+        "get_from_hangar": GetFromHangar,
+        "switch_to_next_beluga": SwitchToNextBeluga,
+        "register_outgoing_jig": RegisterOutgoingJig,
+    }
 
-try:
-    from evaluator import DeterministicEvaluator
-    from beluga_problem import make_initial_state
-    import importlib.util
+    if name not in mapping:
+        raise PlanValidationError(f"Action inconnue dans le JSON : {name}")
 
-    # Load candidate planner
-    spec = importlib.util.spec_from_file_location("planner", "{program_path}")
-    planner = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(planner)
-
-    # Build initial state
-    initial_state = make_initial_state()
-
-    # Build plan using candidate code
-    plan = planner.build_plan(initial_state)
-
-    # Evaluate plan
-    evaluator = DeterministicEvaluator()
-    outcome = evaluator.evaluate(plan)
-
-    # Extract minimal metrics for OpenEvolve
-    result = {{
-        "combined_score": float(outcome.score["value"]),
-        "goal_reached": bool(outcome.goal_reached),
-        "invalid_plan": bool(outcome.invalid_plan),
-        "plan_length": len(plan.actions) if plan is not None else 0,
-        "free_racks": int(outcome.free_racks),
-    }}
-
-    with open("{temp_file.name}.results", "wb") as f:
-        pickle.dump(result, f)
-
-except Exception as e:
-    with open("{temp_file.name}.results", "wb") as f:
-        pickle.dump({{
-            "error": str(e),
-            "traceback": traceback.format_exc()
-        }}, f)
-"""
-        temp_file.write(wrapper_code.encode())
-        wrapper_path = temp_file.name
-
-    results_path = f"{wrapper_path}.results"
+    cls = mapping[name]
 
     try:
-        process = subprocess.Popen(
-            [sys.executable, wrapper_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        if name in ["unload_beluga", "load_beluga"]:
+            return cls(jig=action_dict["j"], beluga=action_dict["b"], trailer=action_dict["t"])
 
-        try:
-            stdout, stderr = process.communicate(timeout=timeout_seconds)
+        elif name in ["pick_up_rack", "put_down_rack"]:
+            return cls(
+                jig=action_dict["j"],
+                trailer=action_dict["t"],
+                rack=action_dict["r"],
+                side=action_dict["s"],
+            )
 
-            if stderr:
-                print("Subprocess stderr:")
-                print(stderr.decode())
+        elif name == "deliver_to_hangar":
+            return cls(
+                jig=action_dict["j"],
+                hangar=action_dict.get("h", ""),
+                trailer=action_dict["t"],
+                production_line=action_dict.get("pl", ""),
+            )
 
-            if process.returncode != 0:
-                raise RuntimeError(f"Subprocess exited with code {process.returncode}")
+        elif name == "get_from_hangar":
+            return cls(
+                jig=action_dict["j"],
+                hangar=action_dict["h"],
+                trailer=action_dict["t"],
+            )
 
-            if not os.path.exists(results_path):
-                raise RuntimeError("Results file not found")
+        elif name == "switch_to_next_beluga":
+            return cls(next_beluga=action_dict["b"])
 
-            with open(results_path, "rb") as f:
-                result = pickle.load(f)
+        elif name == "register_outgoing_jig":
+            return cls(jig=action_dict["j"], trailer=action_dict["t"])
 
-            if "error" in result:
-                raise RuntimeError(result["error"] + "\n" + result.get("traceback", ""))
-
-            return result
-
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
-            raise TimeoutError("Planner timed out")
-
-    finally:
-        if os.path.exists(wrapper_path):
-            os.unlink(wrapper_path)
-        if os.path.exists(results_path):
-            os.unlink(results_path)
+    except KeyError as e:
+        raise PlanValidationError(f"Paramètre {e} manquant pour l'action {name}")
 
 
-def evaluate(program_path):
-    """
-    OpenEvolve evaluation entry point
-    """
+# =========================
+# Simulation + scoring
+# =========================
 
+def evaluate_plan(initial_state: State, plan_actions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    s = initial_state.copy()
+    actions_executed = 0
+
+    total_to_deliver = sum(len(pl.schedule) for pl in s.production_lines.values())
+
+    try:
+        for i, action_data in enumerate(plan_actions):
+            action = reconstruct_action(action_data)
+
+            if not action.is_applicable(s):
+                raise PlanValidationError(f"Action {i} ({action.name}) non applicable")
+
+            s = action.apply(s)
+            actions_executed += 1
+
+        delivered = sum(len(d) for d in s.production_line_deliveries.values())
+        completion_rate = delivered / total_to_deliver if total_to_deliver > 0 else 1.0
+
+        combined_score = (
+            0.6 * completion_rate
+            + 0.2 * (1.0 / (1 + actions_executed))
+            + 0.2 * (1.0 if is_terminal_state(s) else 0.0)
+        ) * 100
+
+        return {
+            "validity": 1.0,
+            "completion_rate": float(completion_rate),
+            "actions_count": actions_executed,
+            "is_terminal": 1.0 if is_terminal_state(s) else 0.0,
+            "score": completion_rate * 100,
+            "combined_score": combined_score,
+        }
+
+    except PlanValidationError as e:
+        print(f"ÉCHEC DE VALIDATION : {e}")
+        return {
+            "validity": 0.0,
+            "completion_rate": 0.0,
+            "actions_count": actions_executed,
+            "is_terminal": 0.0,
+            "score": 0.0,
+            "combined_score": 0.0,
+            "error": str(e),
+        }
+
+
+# =========================
+# Orchestrateur OpenEvolve
+# =========================
+
+def run_evaluation(program_path: str, instance_path: str):
+    print(f"--- Démarrage de l'évaluation : {program_path} ---")
     start_time = time.time()
 
     try:
-        result = run_with_timeout(program_path, timeout_seconds=600)
-
-        combined_score = result["combined_score"]
-        validity = (
-            1.0
-            if result["goal_reached"] and not result["invalid_plan"]
-            else 0.0
+        result = subprocess.run(
+            [sys.executable, program_path, instance_path],
+            timeout=130,
+            capture_output=True,
+            text=True,
         )
 
-        eval_time = time.time() - start_time
+        print("STDOUT:\n", result.stdout)
+        print("STDERR:\n", result.stderr)
 
-        return {
-            "combined_score": float(combined_score),
-            "validity": float(validity),
-            "eval_time": float(eval_time),
-            "plan_length": int(result["plan_length"]),
-            "free_racks": int(result["free_racks"]),
-        }
-
-    except TimeoutError:
-        return {
-            "combined_score": 0.0,
-            "validity": 0.0,
-            "eval_time": float(time.time() - start_time),
-            "error": "Timeout",
-        }
+        if result.returncode != 0:
+            raise RuntimeError("Le programme candidat a crashé")
 
     except Exception as e:
-        print("Evaluation failed:", str(e))
-        traceback.print_exc()
+        print(f"Erreur fatale lors de l'exécution du script : {e}")
         return {
-            "combined_score": 0.0,
             "validity": 0.0,
-            "eval_time": 0.0,
-            "error": str(e),
+            "completion_rate": 0.0,
+            "actions_count": 0,
+            "is_terminal": 0.0,
+            "score": 0.0,
+            "combined_score": 0.0,
+            "error": "execution_failed",
+            "eval_time": time.time() - start_time,
         }
+
+    result_path = os.path.join(os.getcwd(), "result.json")
+    if not os.path.exists(result_path):
+        return {
+            "validity": 0.0,
+            "completion_rate": 0.0,
+            "actions_count": 0,
+            "is_terminal": 0.0,
+            "score": 0.0,
+            "combined_score": 0.0,
+            "error": "result.json introuvable",
+            "eval_time": time.time() - start_time,
+        }
+
+    with open(result_path, "r", encoding="utf-8") as f:
+        plan = json.load(f)
+
+    initial_state = load_instance_from_json(instance_path)
+    metrics = evaluate_plan(initial_state, plan)
+    metrics["eval_time"] = time.time() - start_time
+
+    return metrics
+
+
+# =========================
+# API OpenEvolve
+# =========================
+
+def evaluate(program_path, instance_path=None):
+    if instance_path is None:
+        instance_path = "problem_143_s185_j5_r2_oc28_f3.json"
+    return run_evaluation(program_path, instance_path)
+
+
+# =========================
+# Test manuel
+# =========================
+
+if __name__ == "__main__":
+    res = run_evaluation(
+        "beluga_model_avecjsoncorrect.py",
+        "problem_143_s185_j5_r2_oc28_f3.json",
+    )
+    print("\n--- RÉSULTATS FINAUX ---")
+    print(json.dumps(res, indent=4))
