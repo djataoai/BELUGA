@@ -1377,7 +1377,7 @@ def run_greedy_with_backtracking(initial_state: State, output_path: str = "resul
         actions_with_score = generate_possible_actions(state, urgency)
         
         # Tri glouton (les meilleurs scores en premier)
-        actions_with_score.sort(key=lambda x: x.score, reverse=True)
+        actions_with_score.sort(key=lambda x: x[1], reverse=True)
 
         # === 3. Backtrack si pas d'actions ===
         if not actions_with_score:
@@ -1387,9 +1387,9 @@ def run_greedy_with_backtracking(initial_state: State, output_path: str = "resul
             while stack:
                 node = stack.pop() # On remonte d'un niveau
                 
-                if node.alternatives:
+                if node.remaining_actions:
                     # On prend la meilleure alternative restante
-                    next_choice = node.alternatives.pop(0)
+                    next_choice = node.remaining_actions.pop(0)
                     
                     # On restaure l'état et l'historique du nœud
                     state = node.state
@@ -1416,7 +1416,7 @@ def run_greedy_with_backtracking(initial_state: State, output_path: str = "resul
 
         # === 4. Avancement (Étape Gloutonne) ===
         # On choisit la meilleure action
-        best_choice = actions_with_score.pop(0)
+        best_choice = actions_with_score[0][0]
         alternatives = [a for a, _ in actions_with_score[1:]]
         
         # On sauvegarde ce point de décision (limité par max_backtrack)
@@ -1448,65 +1448,65 @@ def run_greedy_with_backtracking(initial_state: State, output_path: str = "resul
 
 # ---------- Main example usage ----------
 from pathlib import Path
-from tqdm import tqdm
-if __name__ == "__main__":
-    # 1. Configuration des dossiers
-    input_dir = Path("/home/aichatou/ProjetBeluga/belugaModel/instances")
-    output_dir = Path("/home/aichatou/ProjetBeluga/belugaModel/res")
-
-    # 2. Création du dossier de sortie
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # 3. Récupération de la liste des fichiers
-    instances_files = list(input_dir.glob("*.json"))
-
-    if not instances_files:
-        print(f"[-] Aucun fichier JSON trouvé dans le dossier '{input_dir}'")
-    else:
-        # 4. Initialisation de la barre de progression
-        # desc: texte affiché à gauche, unit: l'unité de mesure
-        for file_path in tqdm(instances_files, desc="Traitement des instances", unit="file"):
-            
-            output_file_path = output_dir / f"res_{file_path.name}"
-
-            try:
-                # Chargement
-                s = load_instance_from_json(file_path)
-                
-                # Exécution
-                run_greedy_with_backtracking(s, output_path=str(output_file_path))
-                
-            except Exception as e:
-                # tqdm.write permet d'afficher des messages sans casser la barre
-                tqdm.write(f"[Erreur] Sur le fichier {file_path.name} : {e}")
-
-        print("\n" + "="*30)
-        print("Opération terminée.")
-        print("="*30)
-
-
+# from tqdm import tqdm
 # if __name__ == "__main__":
-#     # Fichier d'entrée (une seule instance)
-#     input_file = Path("/home/aichatou/ProjetBeluga/belugaModel/instances_bb/problem_2_s50326_j418_r20_oc53_f167.json")
-    
-#     # Dossier de sortie
-#     output_dir = Path("nv")
-#     output_dir.mkdir(parents=True, exist_ok=True)
-    
-#     # Fichier de sortie
-#     output_file = output_dir / f"res_{input_file.name}"
+#     # 1. Configuration des dossiers
+#     input_dir = Path("/home/aichatou/ProjetBeluga/belugaModel/instances")
+#     output_dir = Path("/home/aichatou/ProjetBeluga/belugaModel/res")
 
-#     try:
-#         # Chargement de l'instance
-#         s = load_instance_from_json(input_file)
-        
-#         # Exécution de l'algorithme
-#         run_greedy_with_backtracking(s, output_path=str(output_file))
-        
-#         print("[OK] Instance traitée avec succès.")
+#     # 2. Création du dossier de sortie
+#     output_dir.mkdir(parents=True, exist_ok=True)
+
+#     # 3. Récupération de la liste des fichiers
+#     instances_files = list(input_dir.glob("*.json"))
+
+#     if not instances_files:
+#         print(f"[-] Aucun fichier JSON trouvé dans le dossier '{input_dir}'")
+#     else:
+#         # 4. Initialisation de la barre de progression
+#         # desc: texte affiché à gauche, unit: l'unité de mesure
+#         for file_path in tqdm(instances_files, desc="Traitement des instances", unit="file"):
+            
+#             output_file_path = output_dir / f"res_{file_path.name}"
+
+#             try:
+#                 # Chargement
+#                 s = load_instance_from_json(file_path)
+                
+#                 # Exécution
+#                 run_greedy_with_backtracking(s, output_path=str(output_file_path))
+                
+#             except Exception as e:
+#                 # tqdm.write permet d'afficher des messages sans casser la barre
+#                 tqdm.write(f"[Erreur] Sur le fichier {file_path.name} : {e}")
+
+#         print("\n" + "="*30)
+#         print("Opération terminée.")
+#         print("="*30)
+
+
+if __name__ == "__main__":
+    # Fichier d'entrée (une seule instance)
+    input_file = Path("/home/aichatou/ProjetBeluga/evaluation/problem_143_s185_j5_r2_oc28_f3.json")
     
-#     except Exception as e:
-#         import traceback
-#         print(f"❌ [ERREUR CRITIQUE]")
-#         traceback.print_exc() # Ceci v
-#         print(f"[Erreur] {e}")
+    # Dossier de sortie
+    output_dir = Path("nv")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Fichier de sortie
+    output_file = output_dir / f"res_{input_file.name}"
+
+    try:
+        # Chargement de l'instance
+        s = load_instance_from_json(input_file)
+        
+        # Exécution de l'algorithme
+        run_greedy_with_backtracking(s, output_path=str(output_file))
+        
+        print("[OK] Instance traitée avec succès.")
+    
+    except Exception as e:
+        import traceback
+        print(f"❌ [ERREUR CRITIQUE]")
+        traceback.print_exc() # Ceci v
+        print(f"[Erreur] {e}")
