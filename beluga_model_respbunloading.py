@@ -137,7 +137,7 @@ class LoadBeluga(Action):
 
     def is_applicable(self, s: State) -> bool:
         # trailer must carry the jig, beluga must be current_beluga
-        return (s.trailer_load.get(self.trailer) == self.jig) and (s.current_beluga == self.beluga)
+        return (s.trailer_load.get(self.trailer) == self.jig) and (s.current_beluga == self.beluga) and (s.trailer_location.get(self.trailer, ("beluga", "bside"))[0] == "beluga")
 
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
@@ -165,7 +165,7 @@ class UnloadBeluga(Action):
 
     def is_applicable(self, s: State) -> bool:
         # jig must be in beluga_contents and current beluga matches and trailer empty & at beluga
-        return (s.current_beluga == self.beluga) and (self.jig in s.beluga_contents) and (s.trailer_load.get(self.trailer) is None) 
+        return (s.current_beluga == self.beluga) and (self.jig in s.beluga_contents) and (s.trailer_load.get(self.trailer) is None) and (s.trailer_location.get(self.trailer, ("beluga", "bside"))[0] == "beluga")
     #and (s.trailer_location.get(self.trailer, ("beluga", "bside"))[1] == "bside")
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
@@ -220,26 +220,26 @@ class GetFromHangar(Action):
 
     
    
-    def is_applicable(self, s: State) -> bool:
-        # On vérifie la position du trailer (doit être côté usine)
-        loc = s.trailer_location.get(self.trailer)
-        is_factory = "factory" in self.trailer or (loc and loc[1] == "fside")
-        return (s.hangar_host.get(self.hangar) == self.jig) and (s.trailer_load.get(self.trailer) is None) and is_factory
-
     # def is_applicable(self, s: State) -> bool:
-    #     # Vérification 1 : Le gabarit est-il dans le hangar ?
-    #     jig_in_hangar = s.hangar_host.get(self.hangar)
-    #     if jig_in_hangar != self.jig:
-    #         print(f"[FAILED] GetFromHangar: {self.hangar} contient '{jig_in_hangar}', mais on cherche '{self.jig}'")
-    #         return False
-            
-    #     # Vérification 2 : La remorque est-elle libre ?
-    #     trailer_content = s.trailer_load.get(self.trailer)
-    #     if trailer_content is not None:
-    #         print(f"[FAILED] GetFromHangar: La remorque {self.trailer} est déjà occupée par '{trailer_content}'")
-    #         return False
+    #     # On vérifie la position du trailer (doit être côté usine)
+    #     loc = s.trailer_location.get(self.trailer)
+    #     is_factory = "factory" in self.trailer or (loc and loc[1] == "fside")
+    #     return (s.hangar_host.get(self.hangar) == self.jig) and (s.trailer_load.get(self.trailer) is None) and is_factory
 
-    #     return True
+    def is_applicable(self, s: State) -> bool:
+        # Vérification 1 : Le gabarit est-il dans le hangar ?
+        jig_in_hangar = s.hangar_host.get(self.hangar)
+        if jig_in_hangar != self.jig:
+            print(f"[FAILED] GetFromHangar: {self.hangar} contient '{jig_in_hangar}', mais on cherche '{self.jig}'")
+            return False
+            
+        # Vérification 2 : La remorque est-elle libre ?
+        trailer_content = s.trailer_load.get(self.trailer)
+        if trailer_content is not None:
+            print(f"[FAILED] GetFromHangar: La remorque {self.trailer} est déjà occupée par '{trailer_content}'")
+            return False
+
+        return True
 
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
@@ -275,7 +275,12 @@ class DeliverToHangar(Action):
         if hangar_content not in (None, self.jig):
             print(f"[FAILED] DeliverToHangar: Le hangar {self.hangar} est occupé par '{hangar_content}'")
             return False
-
+        
+        loc = s.trailer_location.get(self.trailer)
+        is_factory = "factory" in self.trailer or (loc and loc[1] == "fside")
+        if not is_factory:
+            print(f"[FAILED] DeliverToHangar: La remorque {self.trailer} n'est pas du côté usine")
+            return False
         return True
     def apply(self, s: State) -> State:
         if not self.is_applicable(s):
@@ -574,7 +579,7 @@ def choose_rack_for_jig(state: State, jig: str, urgency: Dict[str, int], side: s
         else:  # "fside"
             blocked = contents[-1] if contents else None
 
-        blocked_urg = urgency.get(blocked, -1) if blocked is not None else -1
+        blocked_urg = urgency.get(blocked, -1) if blocked is not None else 1000 
 
         # score simple : urgence bloquée (on veut MINIMISER)
         score = blocked_urg
@@ -648,16 +653,9 @@ def send_one_edge_jig(state: State, jig: str, target: str) -> List[Action]:
     """
     actions = []
 
-    # --- Validations spécifiques ---
-    is_empty = state.jig_empty.get(jig, True)
 
-    if target == "beluga":
-        if not is_empty:
-            return []  # règle: jig doit être empty pour charger Beluga
-    else:
-        # sinon target = production
-        if is_empty:
-            return []  # règle: jig doit être full pour aller en production
+
+
 
     # --- Trouver la jig à un edge ---
     src_rack = None
@@ -665,10 +663,10 @@ def send_one_edge_jig(state: State, jig: str, target: str) -> List[Action]:
     for r, contents in state.rack_contents.items():
         if not contents:
             continue
-        if contents[0] == jig:
+        if (target == "beluga") and contents[0] == jig:
             src_rack, side = r, "bside"
             break
-        if contents[-1] == jig:
+        if (target in state.production_lines) and contents[-1] == jig:
             src_rack, side = r, "fside"
             break
 
@@ -729,7 +727,7 @@ def unload_jig_from_beluga(state: State, jig: str) -> List[Action]:
         return []
 
     # 2. Chercher un trailer vide (on regarde seulement s'il est vide, peu importe sa position actuelle)
-    trailer_name = find_trailer_at(state, side=None, require_empty=True)    
+    trailer_name = find_trailer_at(state, side="bside", require_empty=True)    
     
     if trailer_name is None:
         print("Pas de trailer vide disponible pour le déchargement")
@@ -957,7 +955,7 @@ def bring_jig_to_rack(state: State, jig: str, urgency: Dict[str, int]) -> List[A
         return []  # jig pas dans un hangar
      
     # Trouver trailer vide
-    trailer = find_trailer_at(state, side=None, require_empty=True)
+    trailer = find_trailer_at(state, side="fside", require_empty=True)
     if trailer is None:
         print("Pas de trailer vide disponible")
         return []  # pas de trailer vide
@@ -1249,6 +1247,8 @@ def run_greedy_planning(initial_state: State, output_path: str = "result.json"):
 
     print(f"Plan glouton sauvegardé dans {output_path}")
     return action_history
+
+
 # def run_greedy_with_backtracking(initial_state: State, output_path: str = "result.json", max_backtrack: int = 15):
 
 #     stack = []  # pile de backtracking
@@ -1319,7 +1319,7 @@ def run_greedy_planning(initial_state: State, output_path: str = "result.json"):
 #                     print(f"Nombre de vols traités : {len(state.last_belugas)}")
 #                     break
 
-#             continue  # repartir du nouvel état
+#                 continue  # repartir du nouvel état
 
 #         # === 3. Trier les actions (greedy) ===
 #         actions_with_score.sort(key=lambda x: x[1])
@@ -1352,13 +1352,14 @@ def run_greedy_planning(initial_state: State, output_path: str = "result.json"):
 
 
 
+
 def display_summary(state: State):
     print("\n=== Résumé final ===")
     for pl, deliveries in state.production_line_deliveries.items():
         print(f"Ligne {pl} : {len(deliveries)} jigs livrés")
     print(f"Nombre de vols traités : {len(state.last_belugas)}")
 
-def run_greedy_with_backtracking(initial_state: State, output_path: str = "result.json", max_backtrack: int = 15):
+def run_greedy_with_backtracking(initial_state: State, output_path: str = "result.json", max_backtrack: int = 5):
     stack = [] 
     state = initial_state
     history = []
@@ -1401,7 +1402,7 @@ def run_greedy_with_backtracking(initial_state: State, output_path: str = "resul
                         history.append(action_to_evaluator_dict(a))
                     
                     # On replace le nœud dans la pile car il lui reste peut-être d'autres alternatives
-                    stack.append(node)
+                    
                     
                     print(f"Backtrack réussi. Reprise à l'étape {len(history)}.")
                     backtrack_success = True
@@ -1487,7 +1488,7 @@ from pathlib import Path
 
 if __name__ == "__main__":
     # Fichier d'entrée (une seule instance)
-    input_file = Path("/home/aichatou/ProjetBeluga/evaluation/problem_143_s185_j5_r2_oc28_f3.json")
+    input_file = Path("/home/aichatou/ProjetBeluga/belugaModel/instances/problem_59_s50385_j7_r2_oc23_f7.json")
     
     # Dossier de sortie
     output_dir = Path("nv")
