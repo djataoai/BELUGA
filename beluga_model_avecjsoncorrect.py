@@ -1195,29 +1195,40 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
     # else :
     #     print("  -> Aucune jig_type restante pour le Beluga actuel.")
     jig_type = state.remaining_outgoing[0] if state.remaining_outgoing else None
+
     if jig_type is not None:
-        print(f"  Tente de ramener un jig vide de type {jig_type} pour le Beluga {state.current_beluga}...")
+        print(f"  Tente de ramener le PROCHAIN jig requis (type {jig_type}) pour le Beluga {state.current_beluga}...")
+        
+        # Trouver le meilleur jig disponible de ce type spécifique
         jig = find_best_jig_of_type(state, jig_type, empty=True)
+        
         if jig is None:
-            print(f"    -> Aucun jig vide de type {jig_type} disponible pour le Beluga {state.current_beluga}.")
-            print(" etat des racks  :")
-            for rname, contents in state.rack_contents.items():
-                print(f"    Rack {rname}: {contents}, Jigs empty status: {[state.jig_empty.get(j, True) for j in contents]}")
-            #continue
-        print("Tente de ramener jig outgoing", jig, "dans le Beluga", state.current_beluga)
-        atomic_actions = send_empty_jig_to_beluga(state, jig)
-        if not atomic_actions:
-            print(f"    -> Échec: Impossible de ramener {jig} dans le Beluga {state.current_beluga}.")
-            #continue
-        macro = wrap_macro(
-            atomic_actions,
-            name=f"bring_back_jig({jig})"
-        )
-        score = evaluate_macro_action(state, macro)-3
-        actions_with_score.append((macro, score))
-        print(f"    -> Succès: Macro {macro.name} générée. Score: {score:.2f}, Actions: {len(atomic_actions)}")
-    else :
-        print("  -> Aucune jig_type restante pour le Beluga actuel.")
+            # CAS CRITIQUE : Le jig requis est introuvable ou bloqué
+            print(f"  [BLOQUAGE] Aucun jig vide de type {jig_type} n'est disponible !")
+            # On ne fait rien ici : actions_with_score restera vide pour ce type d'action, 
+            # ce qui déclenchera le backtracking dans la boucle principale.
+            
+        else:
+            # 2. Tenter de générer les actions pour ramener CE jig
+            atomic_actions = send_empty_jig_to_beluga(state, jig)
+            
+            if not atomic_actions:
+                print(f"  [ERREUR] {jig} trouvé mais impossible de construire un chemin vers le Beluga.")
+                # Ici aussi, on ne fait rien. Si c'est la seule action possible, le backtrack s'activera.
+            else:
+                # 3. Création de la macro action
+                macro = wrap_macro(
+                    atomic_actions,
+                    name=f"bring_back_jig({jig})"
+                )
+                
+                # On donne un score. Si c'est l'action prioritaire, le score doit rester attractif.
+                score = evaluate_macro_action(state, macro) - 3
+                actions_with_score.append((macro, score))
+                print(f"    -> Succès: Macro {macro.name} générée. Score: {score:.2f}")
+
+    else:
+        print("  -> Aucun jig restant à charger pour le Beluga actuel.")
 
 
     print(f"\n--- Fin Génération. Total actions: {len(actions_with_score)} ---")
