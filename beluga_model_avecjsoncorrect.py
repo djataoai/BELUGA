@@ -1411,8 +1411,8 @@ def run_greedy_with_backtracking(initial_state: State, output_path: str = "resul
 
 if __name__ == "__main__":
     # 1. Transformez la chaîne en objet Path
-    input_file = Path(r'C:\Users\papaa\openevolve\examples\beluga\problem_143_s185_j5_r2_oc28_f3.json')
-    
+    input_file = Path(r'C:\Users\papaa\openevolve\examples\beluga\problem_103_s145_j266_r20_oc21_f173.json')
+    #input_file = Path(r'C:\Users\papaa\openevolve\examples\beluga\problem_143_s185_j5_r2_oc28_f3.json')
     # Dossier de sortie
     output_dir = Path(r'C:\Users\papaa\openevolve\examples\beluga')
     output_dir.mkdir(parents=True, exist_ok=True)

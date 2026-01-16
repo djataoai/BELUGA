@@ -197,7 +197,9 @@ def run_evaluation(program_path: str, instance_path: str):
 
 def evaluate(program_path, instance_path=None):
     if instance_path is None:
-        instance_path = "problem_143_s185_j5_r2_oc28_f3.json"
+
+        instance_path = r'C:\Users\papaa\openevolve\examples\beluga\problem_103_s145_j266_r20_oc21_f173.json'
+        #instance_path = r'C:\Users\papaa\openevolve\examples\beluga\problem_143_s185_j5_r2_oc28_f3.json'
     return run_evaluation(program_path, instance_path)
 
 
@@ -208,7 +210,8 @@ def evaluate(program_path, instance_path=None):
 if __name__ == "__main__":
     res = run_evaluation(
         "beluga_model_avecjsoncorrect.py",
-        "problem_143_s185_j5_r2_oc28_f3.json",
+        #r'C:\Users\papaa\openevolve\examples\beluga\problem_143_s185_j5_r2_oc28_f3.json',
+        r'C:\Users\papaa\openevolve\examples\beluga\problem_103_s145_j266_r20_oc21_f173.json',
     )
     print("\n--- RÉSULTATS FINAUX ---")
     print(json.dumps(res, indent=4))
