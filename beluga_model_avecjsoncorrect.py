@@ -1194,7 +1194,8 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
     #     print(f"    -> Succès: Macro {macro.name} générée. Score: {score:.2f}, Actions: {len(atomic_actions)}")
     # else :
     #     print("  -> Aucune jig_type restante pour le Beluga actuel.")
-    for jig_type in set(state.remaining_outgoing):
+    jig_type = state.remaining_outgoing[0] if state.remaining_outgoing else None
+    if jig_type is not None:
         print(f"  Tente de ramener un jig vide de type {jig_type} pour le Beluga {state.current_beluga}...")
         jig = find_best_jig_of_type(state, jig_type, empty=True)
         if jig is None:
@@ -1202,19 +1203,21 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
             print(" etat des racks  :")
             for rname, contents in state.rack_contents.items():
                 print(f"    Rack {rname}: {contents}, Jigs empty status: {[state.jig_empty.get(j, True) for j in contents]}")
-            continue
+            #continue
         print("Tente de ramener jig outgoing", jig, "dans le Beluga", state.current_beluga)
         atomic_actions = send_empty_jig_to_beluga(state, jig)
         if not atomic_actions:
             print(f"    -> Échec: Impossible de ramener {jig} dans le Beluga {state.current_beluga}.")
-            continue
+            #continue
         macro = wrap_macro(
             atomic_actions,
             name=f"bring_back_jig({jig})"
         )
-        score = evaluate_macro_action(state, macro)
+        score = evaluate_macro_action(state, macro)-3
         actions_with_score.append((macro, score))
         print(f"    -> Succès: Macro {macro.name} générée. Score: {score:.2f}, Actions: {len(atomic_actions)}")
+    else :
+        print("  -> Aucune jig_type restante pour le Beluga actuel.")
 
 
     print(f"\n--- Fin Génération. Total actions: {len(actions_with_score)} ---")
