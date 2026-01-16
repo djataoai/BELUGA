@@ -1268,8 +1268,8 @@ def action_to_evaluator_dict(action: Action) -> dict:
     if isinstance(action, PickUpRack): return {"name": "pick_up_rack", "j": action.jig, "t": action.trailer, "r": action.rack, "s": action.side}
     if isinstance(action, GetFromHangar): return {"name": "get_from_hangar", "j": action.jig, "h": action.hangar, "t": action.trailer}
     if isinstance(action, DeliverToHangar): return {"name": "deliver_to_hangar", "j": action.jig, "h": action.hangar, "t": action.trailer, "pl": action.production_line}
-    if isinstance(action, SwitchToNextBeluga): return {"name": "switch_to_next_beluga"}
-    if isinstance(action, RegisterOutgoingJig): return {"name": "load_beluga", "j": action.jig, "b": action.beluga, "t": action.trailer}
+    if isinstance(action, SwitchToNextBeluga): return {"name": "switch_to_next_beluga", "b": action.next_beluga}
+    if isinstance(action, RegisterOutgoingJig): return {"name": "register_outgoing_jig", "j": action.jig, "b": action.beluga, "t": action.trailer}
     return {}
 
 
