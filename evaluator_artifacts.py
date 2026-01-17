@@ -165,6 +165,9 @@ def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
         )
 
     except subprocess.TimeoutExpired:
+        print(f"--- DEBUG SUBPROCESS TIMEOUT ---")
+        print(f"Timeout after 130 seconds")
+        print(f"------------------------------")
         return EvaluationResult(
             metrics={
                 "validity": 0.0,
@@ -183,6 +186,12 @@ def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
         )
 
     if result.returncode != 0:
+        
+        print(f"--- DEBUG SUBPROCESS CRASH ---")
+        print(f"Exit Code: {result.returncode}")
+        print(f"Stderr: {result.stderr}")
+        print(f"Stdout: {result.stdout}")
+        print(f"------------------------------")
         return EvaluationResult(
             metrics={
                 "validity": 0.0,
@@ -200,8 +209,13 @@ def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
             }
         )
 
-    result_path = os.path.join(os.getcwd(), "result.json")
+    #result_path = os.path.join(os.getcwd(), "result.json")
+    result_path = os.path.join(r'C:\Users\papaa\openevolve\examples\beluga', 'result.json')
     if not os.path.exists(result_path):
+        print(f"--- DEBUG MISSING RESULT FILE ---")
+        print(f"result.json introuvable")
+        print(f"Stderr: {result.stderr}")
+        print(f"---------------------------------")
         return EvaluationResult(
             metrics={
                 "validity": 0.0,
@@ -233,6 +247,10 @@ def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
         return eval_result
 
     except Exception as e:
+        print(f"--- DEBUG EVALUATION CRASH ---")
+        print(f"Erreur lors de l'évaluation du plan : {e}")
+        traceback.print_exc()
+        print(f"--------------------------------")
         return EvaluationResult(
             metrics={
                 "validity": 0.0,
@@ -258,7 +276,7 @@ def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
 
 def evaluate(program_path, instance_path=None):
     if instance_path is None:
-        instance_path = "problem_103_s145_j266_r20_oc21_f173.json"
+        instance_path = r'C:\Users\papaa\openevolve\examples\beluga\problem_103_s145_j266_r20_oc21_f173.json'
         #instance_path = "problem_143_s185_j5_r2_oc28_f3.json"
     return run_evaluation(program_path, instance_path)
 # =========================

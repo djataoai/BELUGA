@@ -168,7 +168,7 @@ def run_evaluation(program_path: str, instance_path: str):
             "eval_time": time.time() - start_time,
         }
 
-    result_path = os.path.join(os.getcwd(), "result.json")
+    result_path = os.path.join(r'C:\Users\papaa\openevolve\examples\beluga', 'result.json')
     if not os.path.exists(result_path):
         return {
             "validity": 0.0,
