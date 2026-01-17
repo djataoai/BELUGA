@@ -4,6 +4,7 @@ import time
 import subprocess
 import sys
 from typing import List, Dict, Any
+from pathlib import Path
 
 # Importation des composants du modèle Beluga
 from beluga_model_avecjsoncorrect import (
@@ -168,7 +169,7 @@ def run_evaluation(program_path: str, instance_path: str):
             "eval_time": time.time() - start_time,
         }
 
-    result_path = os.path.join(r'C:\Users\papaa\openevolve\examples\beluga', 'result.json')
+    result_path = os.path.join(r"/Users/teichteil_fl/Projects/Tuples/ProjetEtudiantENAC/BELUGA", 'result.json')
     if not os.path.exists(result_path):
         return {
             "validity": 0.0,
@@ -198,7 +199,7 @@ def run_evaluation(program_path: str, instance_path: str):
 def evaluate(program_path, instance_path=None):
     if instance_path is None:
 
-        instance_path = r'C:\Users\papaa\openevolve\examples\beluga\problem_103_s145_j266_r20_oc21_f173.json'
+        instance_path= r"/Users/teichteil_fl/Projects/Tuples/ProjetEtudiantENAC/BELUGAproblem_103_s145_j266_r20_oc21_f173.json"
         #instance_path = r'C:\Users\papaa\openevolve\examples\beluga\problem_143_s185_j5_r2_oc28_f3.json'
     return run_evaluation(program_path, instance_path)
 
