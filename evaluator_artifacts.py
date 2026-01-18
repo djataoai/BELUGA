@@ -210,6 +210,7 @@ def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
         )
 
     #result_path = os.path.join(os.getcwd(), "result.json")
+    #A verifier
     result_path = os.path.join(r"/Users/teichteil_fl/Projects/Tuples/ProjetEtudiantENAC/BELUGA", 'result.json')
     if not os.path.exists(result_path):
         print(f"--- DEBUG MISSING RESULT FILE ---")
@@ -277,6 +278,7 @@ def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
 def evaluate(program_path, instance_path=None):
     if instance_path is None:
         #instance_path = r'C:\Users\papaa\openevolve\examples\beluga\problem_103_s145_j266_r20_oc21_f173.json'
+        #A verifier
         instance_path= r"/Users/teichteil_fl/Projects/Tuples/ProjetEtudiantENAC/BELUGAproblem_103_s145_j266_r20_oc21_f173.json"
         #instance_path = "problem_143_s185_j5_r2_oc28_f3.json"
     return run_evaluation(program_path, instance_path)
