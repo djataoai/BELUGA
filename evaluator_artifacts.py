@@ -88,11 +88,20 @@ def reconstruct_action(action_dict: Dict[str, Any]) -> Any:
 # Simulation + scoring
 # =========================
 
+
+import numpy as np
+
 def evaluate_plan(initial_state: State, plan_actions: List[Dict[str, Any]]) -> EvaluationResult:
     s = initial_state.copy()
     actions_executed = 0
-
-    total_to_deliver = sum(len(pl.schedule) for pl in s.production_lines.values())
+    
+    # Paramètres de pondération 
+    alpha = 0.7
+    beta = 0.0004
+    
+    # Données de l'instance pour les ratios B et C
+    total_jigs_in_problem = sum(len(pl.schedule) for pl in s.production_lines.values())
+    total_racks_in_problem = len(s.racks)
 
     try:
         for i, action_data in enumerate(plan_actions):
@@ -106,48 +115,59 @@ def evaluate_plan(initial_state: State, plan_actions: List[Dict[str, Any]]) -> E
             s = action.apply(s)
             actions_executed += 1
 
-        delivered = sum(len(d) for d in s.production_line_deliveries.values())
-        completion_rate = delivered / total_to_deliver if total_to_deliver > 0 else 1.0
+      
+        
+        # A : Goal reached (S dans la formule du challenge)
+        goal_reached = 1.0 if is_terminal_state(s) else 0.0
+        
+        # B : Relative plan length (L / jigs)
+        B = actions_executed / total_jigs_in_problem if total_jigs_in_problem > 0 else 0
+        
+        # C : Inverse relative number of free racks (racks / (F + 1))
+        free_racks = len([r_content for r_content in s.rack_contents.values() if len(r_content) == 0])
+        C = total_racks_in_problem / (1 + free_racks)
+        
+        # Formule : score = A * exp(- alpha * B - beta * C)
+        raw_score = goal_reached * np.exp(- alpha * B - beta * C)
+        final_score_scaled = raw_score * 100
 
-        combined_score = (
-            0.6 * completion_rate
-            + 0.2 * (1.0 / (1 + actions_executed))
-            + 0.2 * (1.0 if is_terminal_state(s) else 0.0)
-        ) * 100
+        # --- CONDITION DE VALIDITÉ ---
+        # "validity" vaut 1 uniquement si le score du challenge est strictement positif
+        
+        is_valid = 1.0 if raw_score > 0 else 0.0
 
         return EvaluationResult(
             metrics={
-                "validity": 1.0,
-                "completion_rate": float(completion_rate),
+                "validity": is_valid,
+                "score": float(final_score_scaled),
+                "goal_reached": goal_reached,
                 "actions_count": actions_executed,
-                "is_terminal": 1.0 if is_terminal_state(s) else 0.0,
-                "score": completion_rate * 100,
-                "combined_score": combined_score,
+                "free_racks": free_racks,
+                "completion_rate": goal_reached 
             },
             artifacts={
-                "plan_length": actions_executed,
-                "terminal_state": bool(is_terminal_state(s)),
+                "is_terminal": bool(goal_reached),
+                "plan_length_ratio": float(B),
+                "rack_congestion_ratio": float(C),
+                "raw_value": float(raw_score)
             }
         )
 
     except PlanValidationError as e:
+        # En cas d'erreur ou plan inapplicable, score = 0 donc validity = 0
         return EvaluationResult(
             metrics={
                 "validity": 0.0,
-                "completion_rate": 0.0,
-                "actions_count": actions_executed,
-                "is_terminal": 0.0,
                 "score": 0.0,
-                "combined_score": 0.0,
+                "goal_reached": 0.0,
+                "actions_count": actions_executed,
             },
             artifacts={
                 "error_type": "plan_validation",
                 "error_message": str(e),
-                "failed_action_index": actions_executed,
-                "suggestion": "Vérifier les préconditions des actions",
+                "failed_action_index": actions_executed
             }
         )
-
 
 # =========================
 # Orchestrateur OpenEvolve
@@ -290,6 +310,7 @@ def evaluation_result_to_dict(res):
         "metrics": res.metrics,
         "artifacts": res.artifacts,
     }
+
 
 
 
