@@ -124,7 +124,7 @@ evaluator:
     - 0.4   # partial feasibility (no immediate deadlock)
     - 0.7   # successful handling of several Beluga flights
     - 1.0   # full final state reached
-  parallel_evaluations: 2 
+  parallel_evaluations: 1
   use_llm_feedback: false
 
 # ============================================================
