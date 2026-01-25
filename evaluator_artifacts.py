@@ -5,7 +5,7 @@ import subprocess
 import sys
 import traceback
 from typing import List, Dict, Any
-
+from tqdm import tqdm
 from openevolve.evaluation_result import EvaluationResult
 
 # ===== Import du modèle Beluga =====
@@ -294,14 +294,49 @@ def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
 # =========================
 # API OpenEvolve
 # =========================
+BASE_DIR = r"/Users/teichteil_fl/Projects/Tuples/ProjetEtudiantENAC/BELUGA"
+RESULT_JSON_PATH = os.path.join(BASE_DIR, "result.json")
+INSTANCES_DIR = os.path.join(BASE_DIR, "belugagit")
 
-def evaluate(program_path, instance_path=None):
-    if instance_path is None:
-        #instance_path = r'C:\Users\papaa\openevolve\examples\beluga\problem_103_s145_j266_r20_oc21_f173.json'
-        #A verifier
-        instance_path= r"/Users/teichteil_fl/Projects/Tuples/ProjetEtudiantENAC/BELUGA/problem_103_s145_j266_r20_oc21_f173.json"
-        #instance_path = "problem_143_s185_j5_r2_oc28_f3.json"
-    return run_evaluation(program_path, instance_path)
+def evaluate_all(program_path, folder_path):
+    if not os.path.exists(folder_path):
+        print(f"Erreur : Dossier {folder_path} introuvable.")
+        return []
+
+    files = [f for f in os.listdir(folder_path) if f.endswith('.json')]
+    all_results = []
+    
+    print(f"\n>>> Lancement de l'évaluation sur {len(files)} instances...")
+
+    for filename in tqdm(files, desc="Progression", unit="instance"):
+        path = os.path.join(folder_path, filename)
+        res = run_evaluation(program_path, path)
+        
+        score = res.metrics.get("score", 0.0)
+        valid = res.metrics.get("validity") == 1.0
+        all_results.append((filename, score, "SUCCESS" if valid else "FAILED"))
+
+    if all_results:
+        avg_score = sum(r[1] for r in all_results) / len(all_results)
+        print("\n" + "="*50)
+        print(f"MOYENNE GLOBALE  : {avg_score:.2f} / 100")
+        print("="*50)
+
+    return all_results
+
+def evaluate(program_path, folder_path=None):
+    target = folder_path 
+    
+    if os.path.isdir(target):
+        results = evaluate_all(program_path, target)
+        avg = sum(r[1] for r in results) / len(results) if results else 0
+        return EvaluationResult(
+            metrics={"score": float(avg), "validity": 1.0 if avg > 0 else 0.0},
+            artifacts={"details": results}
+        )
+    return run_evaluation(program_path, target)
+
+
 # =========================
 # Test manuel
 # =========================
@@ -311,6 +346,9 @@ def evaluation_result_to_dict(res):
         "artifacts": res.artifacts,
     }
 
+if __name__ == "__main__":
+    SOLVER = "beluga_model_avecjsoncorrect.py"
+    evaluate(SOLVER, INSTANCES_DIR)
 
 
 
