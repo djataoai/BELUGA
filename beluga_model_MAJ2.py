@@ -1130,27 +1130,29 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
     
 
 
-    for jig_type in set(state.remaining_outgoing):
-        print(f"  Tente de ramener un jig vide de type {jig_type} pour le Beluga {state.current_beluga}...")
-        jig = find_best_jig_of_type(state, jig_type, empty=True)
-        if jig is None:
-            print(f"    -> Aucun jig vide de type {jig_type} disponible pour le Beluga {state.current_beluga}.")
-            print(" etat des racks  :")
-            for rname, contents in state.rack_contents.items():
-                print(f"    Rack {rname}: {contents}, Jigs empty status: {[state.jig_empty.get(j, True) for j in contents]}")
-            continue
-        print("Tente de ramener jig outgoing", jig, "dans le Beluga", state.current_beluga)
-        atomic_actions = send_empty_jig_to_beluga(state, jig)
-        if not atomic_actions:
-            print(f"    -> Échec: Impossible de ramener {jig} dans le Beluga {state.current_beluga}.")
-            continue
-        macro = wrap_macro(
-            atomic_actions,
-            name=f"bring_back_jig({jig})"
-        )
-        score = evaluate_macro_action(state, macro)
-        actions_with_score.append((macro, score))
-        print(f"    -> Succès: Macro {macro.name} générée. Score: {score:.2f}, Actions: {len(atomic_actions)}")
+    #for jig_type in set(state.remaining_outgoing):
+    jig_type = state.remaining_outgoing[0] if state.remaining_outgoing else None
+        
+    print(f"  Tente de ramener un jig vide de type {jig_type} pour le Beluga {state.current_beluga}...")
+    jig = find_best_jig_of_type(state, jig_type, empty=True)
+    if jig is None:
+        print(f"    -> Aucun jig vide de type {jig_type} disponible pour le Beluga {state.current_beluga}.")
+        print(" etat des racks  :")
+        for rname, contents in state.rack_contents.items():
+            print(f"    Rack {rname}: {contents}, Jigs empty status: {[state.jig_empty.get(j, True) for j in contents]}")
+        #continue
+    print("Tente de ramener jig outgoing", jig, "dans le Beluga", state.current_beluga)
+    atomic_actions = send_empty_jig_to_beluga(state, jig)
+    if not atomic_actions:
+        print(f"    -> Échec: Impossible de ramener {jig} dans le Beluga {state.current_beluga}.")
+        #continue
+    macro = wrap_macro(
+        atomic_actions,
+        name=f"bring_back_jig({jig})"
+    )
+    score = evaluate_macro_action(state, macro)
+    actions_with_score.append((macro, score))
+    print(f"    -> Succès: Macro {macro.name} générée. Score: {score:.2f}, Actions: {len(atomic_actions)}")
 
     
 
@@ -1243,6 +1245,8 @@ def run_greedy_planning(initial_state: State, output_path: str = "result.json"):
 
     print(f"Plan glouton sauvegardé dans {output_path}")
     return action_history
+
+
 def run_greedy_with_backtracking(initial_state: State, output_path: str = "result.json", max_backtrack: int = 15):
 
     stack = []  # pile de backtracking

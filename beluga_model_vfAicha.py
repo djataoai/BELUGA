@@ -1356,42 +1356,49 @@ def generate_possible_actions(state: State, urgency: Dict[str, int]) -> List[Tup
     # ============================================================
     # 3) Charger Beluga (si vide)
     # ============================================================
+    # ============================================================
+    # 3) Charger Beluga (CORRIGÉ)
+    # ============================================================
     print("\n[SECTION 3: Chargement Beluga]")
     
-    
-
-
-    #for jig_type in set(state.remaining_outgoing):
+    # On récupère le type de jig attendu par le Beluga
     jig_type = state.remaining_outgoing[0] if state.remaining_outgoing else None
+    
     if jig_type is not None:
         print(f"  Tente de ramener un jig vide de type {jig_type} pour le Beluga {state.current_beluga}...")
-        jig = find_best_jig_of_type(state, jig_type, empty=True)
-        if jig is None:
-            print(f"    -> Aucun jig vide de type {jig_type} disponible pour le Beluga {state.current_beluga}.")
-            print(" etat des racks  :")
-            for rname, contents in state.rack_contents.items():
-                print(f"    Rack {rname}: {contents}, Jigs empty status: {[state.jig_empty.get(j, True) for j in contents]}")
-            #continue
-        print("Tente de ramener jig outgoing", jig, "dans le Beluga", state.current_beluga)
-        atomic_actions = send_empty_jig_to_beluga(state, jig)
-        if not atomic_actions:
-            print(f"    -> Échec: Impossible de ramener {jig} dans le Beluga {state.current_beluga}.")
-            #continue
-        macro = wrap_macro(
-            atomic_actions,
-            name=f"bring_back_jig({jig})"
-        )
-        score = evaluate_macro_action(state, macro)-3
-        actions_with_score.append((macro, score))
-        print(f"    -> Succès: Macro {macro.name} générée. Score: {score:.2f}, Actions: {len(atomic_actions)}")
-    else :
-        print("  -> Aucune jig_type restante pour le Beluga actuel.")
         
-    
+        # 1. Chercher la jig
+        jig = find_best_jig_of_type(state, jig_type, empty=True)
+        
+        if jig is None:
+            print(f"    -> ÉCHEC: Aucun jig vide de type {jig_type} disponible.")
+            # On affiche l'état pour le debug mais on ne génère RIEN
+            for rname, contents in state.rack_contents.items():
+                status = [state.jig_empty.get(j, False) for j in contents]
+                print(f"       Rack {rname}: {contents}, Empty: {status}")
+        else:
+            # 2. Si une jig est trouvée, tenter de générer les actions
+            print(f"    -> Jig {jig} trouvée. Génération des actions de chargement...")
+            atomic_actions = send_empty_jig_to_beluga(state, jig)
+            
+            if not atomic_actions:
+                print(f"    -> ÉCHEC: Impossible de générer la séquence pour charger {jig}.")
+            else:
+                # 3. Si les actions existent, on crée la macro et on l'ajoute
+                macro = wrap_macro(
+                    atomic_actions,
+                    name=f"bring_back_jig({jig})"
+                )
+                # On applique le malus de score
+                score = evaluate_macro_action(state, macro) - 3
+                actions_with_score.append((macro, score))
+                print(f"    -> SUCCÈS: Macro {macro.name} ajoutée (Score: {score:.2f})")
+                
+    else:
+        print("  -> Aucune jig_type restante (remaining_outgoing vide) pour le Beluga actuel.")
 
     print(f"\n--- Fin Génération. Total actions: {len(actions_with_score)} ---")
     return actions_with_score
-
 
 
 
@@ -1724,7 +1731,7 @@ from tqdm import tqdm
 
 if __name__ == "__main__":
     # Fichier d'entrée (une seule instance)
-    input_file = Path("/home/aichatou/ProjetBeluga/belugaModel/instances/problem_57_s50383_j128_r7_oc81_f35.json")
+    input_file = Path("/home/aichatou/ProjetBeluga/belugaModel/instances/problem_73_s50399_j394_r16_oc22_f82.json")
     
     # Dossier de sortie
     output_dir = Path("nv")

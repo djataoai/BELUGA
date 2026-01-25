@@ -14,6 +14,33 @@
   },
   {
     "name": "pick_up_rack",
+    "j": "jig0005",
+    "t": "factory_trailer_1",
+    "r": "rack04",
+    "s": "fside"
+  },
+  {
+    "name": "deliver_to_hangar",
+    "j": "jig0005",
+    "h": "hangar1",
+    "t": "factory_trailer_1",
+    "pl": "pl0"
+  },
+  {
+    "name": "get_from_hangar",
+    "j": "jig0005",
+    "h": "hangar1",
+    "t": "factory_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0005",
+    "t": "factory_trailer_1",
+    "r": "rack06",
+    "s": "fside"
+  },
+  {
+    "name": "pick_up_rack",
     "j": "jig0004",
     "t": "beluga_trailer_1",
     "r": "rack05",
@@ -24,6 +51,88 @@
     "j": "jig0004",
     "b": "beluga1",
     "t": "beluga_trailer_1"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0015",
+    "t": "factory_trailer_1",
+    "r": "rack03",
+    "s": "fside"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0015",
+    "t": "factory_trailer_1",
+    "r": "rack05",
+    "s": "fside"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0010",
+    "t": "factory_trailer_1",
+    "r": "rack03",
+    "s": "fside"
+  },
+  {
+    "name": "deliver_to_hangar",
+    "j": "jig0010",
+    "h": "hangar1",
+    "t": "factory_trailer_1",
+    "pl": "pl0"
+  },
+  {
+    "name": "get_from_hangar",
+    "j": "jig0010",
+    "h": "hangar1",
+    "t": "factory_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0010",
+    "t": "factory_trailer_1",
+    "r": "rack03",
+    "s": "fside"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0021",
+    "t": "factory_trailer_1",
+    "r": "rack00",
+    "s": "fside"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0021",
+    "t": "factory_trailer_1",
+    "r": "rack02",
+    "s": "fside"
+  },
+  {
+    "name": "pick_up_rack",
+    "j": "jig0012",
+    "t": "factory_trailer_1",
+    "r": "rack00",
+    "s": "fside"
+  },
+  {
+    "name": "deliver_to_hangar",
+    "j": "jig0012",
+    "h": "hangar1",
+    "t": "factory_trailer_1",
+    "pl": "pl0"
+  },
+  {
+    "name": "get_from_hangar",
+    "j": "jig0012",
+    "h": "hangar1",
+    "t": "factory_trailer_1"
+  },
+  {
+    "name": "put_down_rack",
+    "j": "jig0012",
+    "t": "factory_trailer_1",
+    "r": "rack00",
+    "s": "fside"
   },
   {
     "name": "pick_up_rack",
