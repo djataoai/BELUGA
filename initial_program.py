@@ -6,6 +6,8 @@ import json
 import copy
 from pathlib import Path
 
+import sys
+import traceback
 # ---------- Basic domain classes ----------
 
 @dataclass(frozen=True)
@@ -1399,30 +1401,32 @@ def run_greedy_with_backtracking(initial_state: State, output_path: str = "resul
 # ---------- Main example usage ----------
 
 
+
 if __name__ == "__main__":
-    # 1. Transformez la chaîne en objet Path
-    input_file = Path(r'C:\Users\papaa\openevolve\examples\beluga\problem_103_s145_j266_r20_oc21_f173.json')
-    #input_file = Path(r'C:\Users\papaa\openevolve\examples\beluga\problem_143_s185_j5_r2_oc28_f3.json')
-    
-    # Dossier de sortie
-    output_dir = Path(r'C:\Users\papaa\openevolve\examples\beluga')
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # 2. Maintenant .name fonctionnera 
-    output_file = output_dir / f"result.json"
+
+    #  Sécurité : vérifier les arguments
+    if len(sys.argv) != 3:
+        print("Usage: python solver.py <instance_path> <result_path>")
+        sys.exit(1)
+
+    #  Arguments venant de l'orchestrateur
+    input_file = Path(sys.argv[1])
+    output_file = Path(sys.argv[2])
 
     try:
-        # Assurez-vous que votre fonction accepte soit un Path soit un str
-        # Si elle ne prend que des str, utilisez load_instance_from_json(str(input_file))
-        s = load_instance_from_json(input_file)
-        
-        # Exécution de l'algorithme
-        run_greedy_with_backtracking(s, output_path=str(output_file))
-        
-        print("[OK] Instance traitée avec succès.")
-    
+        # Charger l'instance
+        s = load_instance_from_json(str(input_file))
+
+        # Lancer l'algo en écrivant EXACTEMENT là où on te dit
+        run_greedy_with_backtracking(
+            s,
+            output_path=str(output_file)
+        )
+
+        print(f"[OK] Instance traitée : {input_file.name}")
+        print(f"[OK] Résultat écrit dans : {output_file}")
+
     except Exception as e:
-        import traceback
-        print(f"❌ [ERREUR CRITIQUE]")
+        print("❌ [ERREUR CRITIQUE]")
         traceback.print_exc()
-        print(f"[Erreur] {e}")
+        sys.exit(2)

@@ -172,17 +172,29 @@ def evaluate_plan(initial_state: State, plan_actions: List[Dict[str, Any]]) -> E
 # =========================
 # Orchestrateur OpenEvolve
 # =========================
+BASE_DIR = r"/Users/teichteil_fl/Projects/Tuples/ProjetEtudiantENAC/BELUGA"
+RESULTS_DIR = os.path.join(BASE_DIR, "results")
+INSTANCES_DIR = os.path.join(BASE_DIR, "belugagit")
 
 def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
     start_time = time.time()
+    instance_name = os.path.splitext(os.path.basename(instance_path))[0]
+    result_filename = f"result_{instance_name}.json"
+    result_path = os.path.join(RESULTS_DIR, result_filename)
 
     try:
         result = subprocess.run(
-            [sys.executable, program_path, instance_path],
+            [
+                sys.executable,
+                program_path,
+                instance_path,
+                result_path,   
+            ],
             timeout=130,
             capture_output=True,
             text=True,
         )
+
 
     except subprocess.TimeoutExpired:
         print(f"--- DEBUG SUBPROCESS TIMEOUT ---")
@@ -229,12 +241,10 @@ def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
             }
         )
 
-    #result_path = os.path.join(os.getcwd(), "result.json")
-    #A verifier
-    result_path = os.path.join(r"/Users/teichteil_fl/Projects/Tuples/ProjetEtudiantENAC/BELUGA", 'result.json')
+   
     if not os.path.exists(result_path):
         print(f"--- DEBUG MISSING RESULT FILE ---")
-        print(f"result.json introuvable")
+        print(f"{result_path} introuvable")
         print(f"Stderr: {result.stderr}")
         print(f"---------------------------------")
         return EvaluationResult(
@@ -264,6 +274,9 @@ def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
         eval_result.metrics["eval_time"] = time.time() - start_time
         
         eval_result.artifacts["stderr"] = result.stderr
+        eval_result.artifacts["output_path"] = result_path
+        eval_result.artifacts["instance"] = instance_name
+
 
         return eval_result
 
@@ -294,9 +307,9 @@ def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
 # =========================
 # API OpenEvolve
 # =========================
-BASE_DIR = r"/Users/teichteil_fl/Projects/Tuples/ProjetEtudiantENAC/BELUGA"
-RESULT_JSON_PATH = os.path.join(BASE_DIR, "result.json")
-INSTANCES_DIR = os.path.join(BASE_DIR, "belugagit")
+
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
 
 def evaluate_all(program_path, folder_path):
     if not os.path.exists(folder_path):
