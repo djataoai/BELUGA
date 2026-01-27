@@ -343,7 +343,11 @@ def evaluate_all(program_path, folder_path):
     return all_results
 
 def evaluate(program_path, folder_path=None):
-    target = folder_path 
+    if folder_path is None:
+        # OpenEvolve appelle evaluate(program_path) → on utilise le dossier par défaut
+        target = INSTANCES_DIR
+    else:
+        target = folder_path 
     
     if os.path.isdir(target):
         results = evaluate_all(program_path, target)
