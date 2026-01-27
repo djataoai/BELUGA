@@ -6,6 +6,8 @@ import sys
 import traceback
 from typing import List, Dict, Any
 from tqdm import tqdm
+import uuid
+
 from openevolve.evaluation_result import EvaluationResult
 
 # ===== Import du modèle Beluga =====
@@ -95,7 +97,7 @@ def evaluate_plan(initial_state: State, plan_actions: List[Dict[str, Any]]) -> E
     s = initial_state.copy()
     actions_executed = 0
     
-    # Paramètres de pondération 
+    # Paramètres de pondération s
     alpha = 0.7
     beta = 0.0004
     
@@ -179,8 +181,10 @@ INSTANCES_DIR = os.path.join(BASE_DIR, "belugagit")
 def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
     start_time = time.time()
     instance_name = os.path.splitext(os.path.basename(instance_path))[0]
-    result_filename = f"result_{instance_name}.json"
+    run_id = uuid.uuid4().hex[:8]
+    result_filename = f"result_{instance_name}_{run_id}.json"
     result_path = os.path.join(RESULTS_DIR, result_filename)
+    
 
     try:
         result = subprocess.run(
@@ -276,6 +280,7 @@ def run_evaluation(program_path: str, instance_path: str) -> EvaluationResult:
         eval_result.artifacts["stderr"] = result.stderr
         eval_result.artifacts["output_path"] = result_path
         eval_result.artifacts["instance"] = instance_name
+        os.remove(result_path)
 
 
         return eval_result
